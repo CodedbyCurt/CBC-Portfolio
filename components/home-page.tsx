@@ -19,6 +19,8 @@ import {
 import { DevicePair } from "@/components/project-visual";
 import { ProjectScroll } from "@/components/project-scroll";
 import { SmoothScroll } from "@/components/smooth-scroll";
+import { openCookieSettings } from "@/components/cookie-consent";
+import { trackGenerateLead } from "@/lib/client/analytics";
 
 const navLinks = [
   { label: "Work", href: "#work" },
@@ -1190,6 +1192,7 @@ export function Contact() {
     try {
       const result = await submitEnquiry(payload, idempotencyKey);
       if (result.type === "accepted") {
+        trackGenerateLead(idempotencyKey);
         form.reset();
         idempotencyKeys.current.clear();
         dispatch({ type: "success" });
@@ -1394,6 +1397,8 @@ function Footer() {
           <a className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="#work">Work</a>
           <a className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="#pricing">Pricing</a>
           <Link className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="/websites-for-tradespeople">Trade websites</Link>
+          <Link className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="/privacy">Privacy</Link>
+          <button type="button" className="inline-flex min-h-8 items-center transition-colors hover:text-paper" onClick={openCookieSettings}>Cookie settings</button>
           <a className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="#contact">Get in touch</a>
           <span>© 2026 {siteConfig.name}</span>
         </div>

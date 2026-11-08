@@ -14,6 +14,11 @@ describe("sitemap", () => {
         changeFrequency: "monthly",
         priority: 0.8,
       },
+    {
+      url: "https://codedbycurt.co.uk/privacy",
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
     ]);
   });
 });

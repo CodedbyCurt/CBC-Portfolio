@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import "./globals.css";
 import { siteConfig } from "@/lib/site-config";
+import { AnalyticsPageViews, CookieConsent } from "@/components/cookie-consent";
 
 const archivo = localFont({ src: "./fonts/archivo-latin.woff2", variable: "--font-display", display: "swap" });
 const dmSans = localFont({ src: "./fonts/dm-sans-latin.woff2", variable: "--font-body", display: "swap" });
@@ -24,5 +25,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return <html lang="en" className={`${archivo.variable} ${dmSans.variable} ${plexMono.variable}`}><body><a className="skip-link" href="#main-content">Skip to content</a>{children}</body></html>;
+  return <html lang="en" className={`${archivo.variable} ${dmSans.variable} ${plexMono.variable}`}><body><a className="skip-link" href="#main-content">Skip to content</a><AnalyticsPageViews />{children}<CookieConsent /></body></html>;
 }
