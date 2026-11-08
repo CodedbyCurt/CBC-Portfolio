@@ -29,7 +29,23 @@ a { color: inherit; }
 .button-primary:active { transform: translate(0, 0); }
 .button-secondary { align-items: center; border: 2px solid var(--ink); display: inline-flex; font-family: var(--font-mono); font-size: .72rem; font-weight: 700; gap: .55rem; justify-content: center; letter-spacing: .04em; min-height: 3.25rem; padding: .75rem 1.1rem; text-transform: uppercase; transition: background .18s ease, color .18s ease; }
 .button-secondary:hover { background: var(--ink); color: var(--paper); }
+.hero-typewriter { min-height: 1.2em; }
+.hero-typewriter-cursor { display: inline-block; height: .9em; margin-left: .12em; vertical-align: -.08em; width: 2px; background: currentColor; animation: hero-cursor-blink 1s steps(2, start) infinite; }
+@keyframes hero-cursor-blink { to { visibility: hidden; } }
+.kinetic-word { white-space: nowrap; }
+.kinetic-char { display: inline-grid; grid-template-areas: "glyph"; vertical-align: baseline; }
+.kinetic-char-sizer,
+.kinetic-char-glyph { grid-area: glyph; white-space: pre; }
+.kinetic-char-sizer { font-weight: 900; visibility: hidden; }
+.kinetic-char-glyph { font-weight: 300; transition: font-weight 180ms ease; }
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .kinetic-char:hover .kinetic-char-glyph { font-weight: 900; }
+  .kinetic-char:has(+ .kinetic-char:hover) .kinetic-char-glyph,
+  .kinetic-char:hover + .kinetic-char .kinetic-char-glyph { font-weight: 600; }
+  .kinetic-char:has(+ .kinetic-char + .kinetic-char:hover) .kinetic-char-glyph,
+  .kinetic-char:hover + .kinetic-char + .kinetic-char .kinetic-char-glyph { font-weight: 400; }
+}
 .marquee-track { animation: marquee 30s linear infinite; }
 @keyframes marquee { to { transform: translateX(-33.333%); } }
 @media (hover: hover) { .marquee-track:hover { animation-play-state: paused; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } .marquee-track { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } .marquee-track { animation: none !important; } .hero-typewriter-cursor { display: none; } }

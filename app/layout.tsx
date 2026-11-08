@@ -9,6 +9,7 @@ const plexMono = localFont({ src: "./fonts/ibm-plex-mono-latin.woff2", variable:
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
+  alternates: { canonical: siteConfig.url },
   title: { default: `${siteConfig.name} | Websites for UK tradespeople`, template: `%s | ${siteConfig.name}` },
   description: siteConfig.description,
   openGraph: { type: "website", locale: "en_GB", url: siteConfig.url, siteName: siteConfig.name, title: `${siteConfig.name} | Websites for UK tradespeople`, description: siteConfig.description },

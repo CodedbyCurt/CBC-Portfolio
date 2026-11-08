@@ -50,7 +50,7 @@ export const enquirySchema = z
       context.addIssue({
         code: "custom",
         path: ["email"],
-        message: "Provide an email address or phone number.",
+        message: "Please add a phone number or email address so I know how to get back to you.",
       });
     }
   });

@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   enquiryFormReducer,
   getEnquiryIdempotencyKey,
+  hasContactMethod,
   initialEnquiryFormState,
+  missingContactMethodMessage,
   submitEnquiry,
   type EnquiryPayload,
 } from "@/lib/client/enquiry-submission";
@@ -13,6 +15,24 @@ const payload: EnquiryPayload = {
   phone: "+1 (202) 555-0101",
   message: "I would like to discuss a website.",
 };
+
+describe("enquiry contact method validation", () => {
+  it.each([
+    ["both empty", "", "", false],
+    ["phone only", "", "+1 (202) 555-0101", true],
+    ["email only", "customer@example.test", "", true],
+    ["both supplied", "customer@example.test", "+1 (202) 555-0101", true],
+    ["whitespace only", "  ", "  ", false],
+  ])("%s", (_description, email, phone, expected) => {
+    expect(hasContactMethod({ email, phone })).toBe(expected);
+  });
+
+  it("uses a friendly message when both contact methods are empty", () => {
+    expect(missingContactMethodMessage).toBe(
+      "Please add a phone number or email address so I know how to get back to you.",
+    );
+  });
+});
 
 describe("enquiry form submission", () => {
   it("submits the expected JSON payload and idempotency header", async () => {

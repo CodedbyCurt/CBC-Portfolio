@@ -16,6 +16,15 @@ describe("contact form accessibility", () => {
     expect(markup).toContain('aria-live="polite"');
     expect(markup).toContain("Your name");
     expect(markup).toContain("Phone number");
+    expect(markup).toContain("Required");
+    expect(markup).toContain("Optional if you provide an email address.");
+    expect(markup).toContain("Optional if you provide a phone number.");
+    const nameInput = markup.match(/<input[^>]*name="name"[^>]*>/)?.[0] ?? "";
+    const phoneInput = markup.match(/<input[^>]*name="phone"[^>]*>/)?.[0] ?? "";
+    const emailInput = markup.match(/<input[^>]*name="email"[^>]*>/)?.[0] ?? "";
+    expect(nameInput).toContain("required");
+    expect(phoneInput).not.toContain("required");
+    expect(emailInput).not.toContain("required");
     expect(markup).toContain("Email address");
     expect(markup).toContain("Your trade, service area and the work you want more of");
   });

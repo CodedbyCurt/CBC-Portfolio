@@ -2,6 +2,15 @@ export type EnquiryField = "name" | "email" | "phone" | "message";
 
 export type EnquiryPayload = Record<EnquiryField, string>;
 
+export const missingContactMethodMessage =
+  "Please add a phone number or email address so I know how to get back to you.";
+
+export function hasContactMethod(
+  payload: Pick<EnquiryPayload, "email" | "phone">,
+): boolean {
+  return Boolean(payload.email.trim() || payload.phone.trim());
+}
+
 export type EnquiryFormState = {
   phase: "idle" | "submitting" | "success" | "error";
   message: string;

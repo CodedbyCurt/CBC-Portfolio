@@ -34,6 +34,15 @@ describe("enquirySchema", () => {
     });
 
     expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ["email"],
+          message:
+            "Please add a phone number or email address so I know how to get back to you.",
+        }),
+      );
+    }
   });
 
   it("rejects an empty name", () => {

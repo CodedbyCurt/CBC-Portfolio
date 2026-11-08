@@ -1,13 +1,16 @@
 "use client";
 
-import { type FormEvent, useReducer, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { Fragment, type FormEvent, type ReactNode, useEffect, useReducer, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import { ArrowRight, ArrowUpRight, Check, ChevronDown, Menu, Phone, X } from "lucide-react";
+import Image from "next/image";
 import { siteConfig, type Project } from "@/lib/site-config";
 import {
   enquiryFormReducer,
   getEnquiryIdempotencyKey,
+  hasContactMethod,
   initialEnquiryFormState,
+  missingContactMethodMessage,
   submitEnquiry,
   type EnquiryField,
   type EnquiryPayload,
@@ -23,9 +26,36 @@ const navLinks = [
   { label: "FAQ", href: "#faq" },
 ] as const;
 
-const hasConfiguredPhone = siteConfig.phoneHref !== "+442000000000";
-const hasConfiguredEmail = !siteConfig.email.endsWith("@example.com");
-const hasConfiguredWhatsApp = !siteConfig.whatsappHref.endsWith("442000000000");
+const hasConfiguredPhone = Boolean(siteConfig.phoneHref);
+const hasConfiguredEmail = Boolean(siteConfig.email);
+const hasConfiguredWhatsApp = Boolean(siteConfig.whatsappHref);
+const heroTypewriterPhrases = [
+  "SHOWCASE YOUR WORK.",
+  "BUILD CUSTOMER TRUST.",
+  "MAKE ENQUIRIES EASIER.",
+  "A CLEAR STARTING POINT. A PRICE AGREED UP FRONT.",
+] as const;
+
+function KineticWord({
+  text,
+  className = "",
+}: {
+  text: string;
+  className?: string;
+}) {
+  return (
+    <span className={`kinetic-word ${className}`} aria-hidden="true">
+      {Array.from(text, (character, index) => (
+        <span className="kinetic-char" key={`${character}-${index}`}>
+          <span className="kinetic-char-sizer" aria-hidden="true">
+            {character}
+          </span>
+          <span className="kinetic-char-glyph">{character}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function Wordmark() {
   return (
@@ -34,7 +64,9 @@ function Wordmark() {
       className="display inline-flex items-baseline text-2xl font-black tracking-[-.08em]"
       aria-label={`${siteConfig.name} home`}
     >
-      CODED<span className="text-signal">BY</span>CURT
+      <KineticWord text="CODED" />
+      <KineticWord text="BY" className="text-signal" />
+      <KineticWord text="CURT" />
     </a>
   );
 }
@@ -106,8 +138,66 @@ function Header() {
   );
 }
 
-function Hero() {
+export function Hero() {
   const reduced = useReducedMotion();
+  const [typewriterText, setTypewriterText] = useState<string>(
+    heroTypewriterPhrases[0],
+  );
+
+  useEffect(() => {
+    let phraseIndex = 0;
+    let characterIndex = heroTypewriterPhrases[phraseIndex].length;
+    let deleting = true;
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
+      if (deleting) {
+        characterIndex -= 1;
+        setTypewriterText(
+          heroTypewriterPhrases[phraseIndex].slice(0, characterIndex),
+        );
+
+        if (characterIndex === 0) {
+          deleting = false;
+          phraseIndex = (phraseIndex + 1) % heroTypewriterPhrases.length;
+          timeout = setTimeout(tick, 320);
+          return;
+        }
+
+        timeout = setTimeout(tick, 42);
+        return;
+      }
+
+      const phrase = heroTypewriterPhrases[phraseIndex];
+      characterIndex += 1;
+      setTypewriterText(phrase.slice(0, characterIndex));
+
+      if (characterIndex === phrase.length) {
+        deleting = true;
+        timeout = setTimeout(tick, 1800);
+        return;
+      }
+
+      timeout = setTimeout(tick, 76);
+    };
+
+    timeout = setTimeout(tick, 2000);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const renderKineticLine = (text: string, signal = false) => (
+    <span
+      className={signal ? "hero-kinetic-line text-signal" : "hero-kinetic-line"}
+      aria-hidden="true"
+    >
+      {text.split(" ").map((word, wordIndex, words) => (
+        <Fragment key={`${word}-${wordIndex}`}>
+          <KineticWord text={word} />
+          {wordIndex < words.length - 1 ? " " : null}
+        </Fragment>
+      ))}
+    </span>
+  );
 
   return (
     <section id="top" className="relative isolate overflow-hidden bg-ink text-paper">
@@ -139,15 +229,28 @@ function Hero() {
           </motion.p>
           <motion.h1
             className="display max-w-3xl text-[clamp(3.5rem,7.3vw,7rem)] font-black leading-[.86] tracking-[-.08em]"
+            aria-label="LOOK THE PART BEFORE THEY CALL."
             initial={false}
             animate={{ opacity: 1, y: 0 }}
           >
-            LOOK THE PART
+            {renderKineticLine("LOOK THE PART")}
             <br />
-            BEFORE THEY
+            {renderKineticLine("BEFORE THEY")}
             <br />
-            <span className="text-signal">CALL.</span>
+            {renderKineticLine("CALL.", true)}
           </motion.h1>
+          <p className="hero-typewriter display mt-5 text-2xl font-bold leading-tight tracking-[-.045em] text-signal sm:text-3xl">
+            <span className="sr-only">{heroTypewriterPhrases[0]}</span>
+            <span className="grid" aria-hidden="true">
+              <span className="invisible col-start-1 row-start-1">
+                A CLEAR STARTING POINT. A PRICE AGREED UP FRONT.
+              </span>
+              <span className="col-start-1 row-start-1">
+                {typewriterText}
+                <span className="hero-typewriter-cursor" aria-hidden="true" />
+              </span>
+            </span>
+          </p>
           <motion.p
             className="mt-7 max-w-xl text-base leading-7 text-paper/85 sm:text-lg"
             initial={false}
@@ -178,12 +281,43 @@ function Hero() {
         </div>
       </div>
       <div className="container relative z-10 flex items-center justify-between border-t border-paper/30 py-4 eyebrow">
-        <span>For independent trades and home-service businesses</span>
+        <span>Websites for tradespeople and home-service businesses.</span>
         <a className="hidden transition-colors hover:text-signal sm:block" href="#how-it-works">
           A simple process ↓
         </a>
       </div>
     </section>
+  );
+}
+
+function ScrollTextReveal({
+  children,
+  delay = 0,
+}: {
+  children: ReactNode;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
+  const isInView = useInView(ref, { once: true, amount: 0.15 });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={false}
+      animate={reduced === true || isInView ? "visible" : "hidden"}
+      variants={{
+        hidden: { opacity: 0, y: 18 },
+        visible: { opacity: 1, y: 0 },
+      }}
+      transition={{
+        duration: reduced === true ? 0 : 0.72,
+        delay: reduced === true ? 0 : delay,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -201,29 +335,35 @@ function ProjectSection({ project }: { project: Project }) {
       <div className="container grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center lg:gap-16">
         <DevicePair project={project} />
         <div>
-          <div className="flex flex-wrap items-center gap-3 eyebrow">
-            <span className="inline-grid size-7 place-items-center border border-current">
-              {project.number}
-            </span>
-            {project.trade} <span aria-hidden="true">·</span> {project.location}
-          </div>
-          <h2 className="display mt-7 text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-7xl">
-            {project.name}
-          </h2>
-          <dl className="mt-8 space-y-5 border-t border-current/50 pt-5">
-            <div>
-              <dt className="eyebrow opacity-70">The customer’s challenge</dt>
-              <dd className="mt-2 text-base leading-7 sm:text-lg">{project.problem}</dd>
+          <ScrollTextReveal>
+            <div className="flex flex-wrap items-center gap-3 eyebrow">
+              <span className="inline-grid size-7 place-items-center border border-current">
+                {project.number}
+              </span>
+              {project.trade} <span aria-hidden="true">·</span> {project.location}
             </div>
-            <div>
-              <dt className="eyebrow opacity-70">The approach</dt>
-              <dd className="mt-2 text-base leading-7 sm:text-lg">{project.built}</dd>
-            </div>
-            <div>
-              <dt className="eyebrow opacity-70">What the site makes easier</dt>
-              <dd className="mt-2 text-base leading-7 sm:text-lg">{project.result}</dd>
-            </div>
-          </dl>
+          </ScrollTextReveal>
+          <ScrollTextReveal delay={0.1}>
+            <h2 className="display mt-7 text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-7xl">
+              {project.name}
+            </h2>
+          </ScrollTextReveal>
+          <ScrollTextReveal delay={0.2}>
+            <dl className="mt-8 space-y-5 border-t border-current/50 pt-5">
+              <div>
+                <dt className="eyebrow opacity-70">The customer’s challenge</dt>
+                <dd className="mt-2 text-base leading-7 sm:text-lg">{project.problem}</dd>
+              </div>
+              <div>
+                <dt className="eyebrow opacity-70">The approach</dt>
+                <dd className="mt-2 text-base leading-7 sm:text-lg">{project.built}</dd>
+              </div>
+              <div>
+                <dt className="eyebrow opacity-70">What the site makes easier</dt>
+                <dd className="mt-2 text-base leading-7 sm:text-lg">{project.result}</dd>
+              </div>
+            </dl>
+          </ScrollTextReveal>
           <ul className="mt-7 grid gap-2 border-t border-current/50 pt-5 text-sm">
             {project.features.map((feature) => (
               <li key={feature} className="flex gap-3">
@@ -263,13 +403,16 @@ function Marquee() {
     "Plasterers",
     "Roofers",
     "Builders",
+    "Bricklayers",
     "Landscapers",
-    "Home services",
+    "Other home-service businesses",
   ];
 
   return (
     <section aria-label="Trades served" className="overflow-hidden border-y border-ink bg-ink py-5 text-paper">
-      <p className="sr-only">Websites for {trades.join(", ")}.</p>
+      <p className="sr-only">
+        Websites for tradespeople and home-service businesses, including {trades.join(", ")}.
+      </p>
       <div className="marquee-track display flex w-max gap-8 whitespace-nowrap text-3xl font-black tracking-[-.06em] sm:text-4xl" aria-hidden="true">
         {[...trades, ...trades, ...trades].map((trade, index) => (
           <span key={`${trade}-${index}`}>
@@ -354,21 +497,36 @@ function WhatYouGet() {
 }
 
 function Process() {
+  const advantages = [
+    {
+      title: "I build it for you.",
+      copy: "No spending your evenings trying to put a website together.",
+    },
+    {
+      title: "No technical experience needed.",
+      copy: "No complicated software or website-building skills required.",
+    },
+    {
+      title: "Built around your trade.",
+      copy: "Your services, your work, your coverage areas and your customers.",
+    },
+  ];
+
   const steps = [
     {
       number: "01",
       title: "Tell me about the work",
-      copy: "A short conversation about your trade, service area and the jobs you want the site to support.",
+      copy: "Share your trade, service area and the customers you want to reach.",
     },
     {
       number: "02",
       title: "Agree the right scope",
-      copy: "I’ll explain what’s useful, what it costs and what I’ll need from you before we start.",
+      copy: "We’ll agree the pages and details that fit your business, and what the project costs.",
     },
     {
       number: "03",
       title: "Review the first version",
-      copy: "Check the wording, images and contact details together. No web design experience needed.",
+      copy: "Check the wording, photos and contact details together, and share any feedback.",
     },
     {
       number: "04",
@@ -384,13 +542,30 @@ function Process() {
           <div>
             <p className="eyebrow">02 / How it works</p>
             <h2 className="display mt-6 max-w-2xl text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-7xl">
-              YOU’RE BUSY. THIS SHOULDN’T BE A SECOND JOB.
+              YOU KNOW YOUR TRADE. I’LL HANDLE THE WEBSITE.
             </h2>
           </div>
-          <p className="max-w-lg self-end text-lg leading-7 text-paper/75">
-            No jargon and no need to learn a website builder. I’ll keep the decisions clear and
-            focused; you bring the trade knowledge, photos and feedback that make it yours.
-          </p>
+          <div className="max-w-lg self-end space-y-4 text-lg leading-7 text-paper/75">
+            <p>
+              You could spend hours trying to build a website yourself, learning new tools and
+              figuring out what goes where. Or you can leave the website development to me.
+            </p>
+            <p>
+              I build websites around your business, the services you offer and the customers you
+              want to reach. You provide the trade knowledge, photos and feedback. I’ll handle the
+              design, development and technical side.
+            </p>
+          </div>
+        </div>
+        <div className="mt-8 grid gap-px border border-paper/30 bg-paper/30 sm:grid-cols-3">
+          {advantages.map((advantage) => (
+            <article key={advantage.title} className="bg-ink p-5 sm:p-6">
+              <h3 className="display text-2xl font-black leading-[.95] tracking-[-.04em]">
+                {advantage.title}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-paper/70">{advantage.copy}</p>
+            </article>
+          ))}
         </div>
         <ol className="mt-12 grid gap-px border border-paper/30 bg-paper/30 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step) => (
@@ -412,45 +587,79 @@ function Process() {
 }
 
 function Pricing() {
-  const scopes = [
+  const addOns = [
     {
-      number: "01",
-      name: "A clear starting point",
-      price: "From £400",
-      intro: "For a straightforward site that gets the essentials in order.",
-      details: [
-        "Your services and the areas you cover",
-        "A clear way to call or request a quote",
-        "Space for work photos and useful details",
-      ],
-      cta: "Ask about the essentials",
-      featured: true,
+      name: "Facebook and Instagram setup",
+      price: "£40",
+      description:
+        "Set up a Facebook business page and an Instagram professional account for your trade.",
     },
     {
-      number: "02",
-      name: "More room to show your work",
-      price: "Scoped to your needs",
-      intro: "For businesses that need more detail around services and completed jobs.",
-      details: [
-        "More space to explain individual services",
-        "A more detailed project or photo showcase",
-        "Genuine reviews, if you have them to share",
-      ],
-      cta: "Discuss a work showcase",
-      featured: false,
+      name: "Google Business Profile setup",
+      price: "£40",
+      description:
+        "Help customers find your business on Google Search and Google Maps with a properly set-up profile.",
     },
     {
-      number: "03",
-      name: "A tailored brief",
-      price: "Quoted individually",
-      intro: "For a bigger or more specific brief that needs planning before a price is set.",
+      name: "Meta Ads setup",
+      price: "£70",
+      description:
+        "Configure your advertising accounts and set up an initial campaign. Ad spend and ongoing management are separate.",
+    },
+    {
+      name: "QR-code Google review materials",
+      price: "£15",
+      description:
+        "Get a QR code and review-request design customers can scan to reach your Google review link. Printing costs extra.",
+    },
+    {
+      name: "Business card design",
+      price: "£30",
+      description:
+        "A business card design with your contact details, ready to send to a printer. Printing costs extra.",
+    },
+  ];
+
+  const packages = [
+    {
+      name: "Online Presence Package",
+      price: "£70",
+      regularPrice: "£80",
+      saving: "£10",
       details: [
-        "Talk through what the business needs",
-        "Agree the scope before work begins",
-        "A clear quote with no surprise add-ons",
+        "Facebook business page setup",
+        "Instagram professional account setup",
+        "Google Business Profile setup",
       ],
-      cta: "Talk through your brief",
-      featured: false,
+    },
+    {
+      name: "Business Visibility Package",
+      price: "£169",
+      regularPrice: "£195",
+      saving: "£26",
+      details: [
+        "Everything in Online Presence",
+        "Meta Ads account and initial campaign setup",
+        "QR-code Google review materials",
+        "Business card design",
+      ],
+    },
+  ];
+
+  const bundles = [
+    {
+      name: "Starter Website + Online Presence",
+      price: "£325",
+      regularPrice: "£340",
+      saving: "£15",
+      includes: "Starter Website and Online Presence Package",
+    },
+    {
+      name: "Complete Website + Business Visibility",
+      price: "£539",
+      regularPrice: "£569",
+      saving: "£30",
+      includes: "Complete Website and Business Visibility Package",
     },
   ];
 
@@ -461,40 +670,53 @@ function Pricing() {
           <div>
             <p className="eyebrow">03 / Pricing & scope</p>
             <h2 className="display mt-6 max-w-2xl text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-7xl">
-              A CLEAR STARTING POINT. A PRICE AGREED UP FRONT.
+              WEBSITES AND SERVICES. CLEAR PRICES UP FRONT.
             </h2>
           </div>
           <div className="self-end">
             <p className="text-lg leading-7 text-ink/75">
-              Every business needs something a little different. Use these as starting points,
-              not off-the-shelf promises. I’ll recommend what fits, explain the cost and agree
-              exactly what’s included before any work begins.
+              Choose a website package, add useful digital services, or combine them in a bundle.
+              We’ll agree the scope and price before any work begins.
             </p>
           </div>
         </div>
-        <div className="mt-10 grid gap-3 lg:grid-cols-3">
-          {scopes.map((scope) => (
-            <article
-              key={scope.number}
-              className={`flex min-h-full flex-col border border-ink p-6 sm:p-7 ${
-                scope.featured ? "bg-signal" : "bg-paper"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <p className="eyebrow">{scope.number} / Scope guide</p>
-                {scope.featured && (
-                  <span className="border border-ink px-2 py-1 font-mono text-[9px] uppercase tracking-wider">
-                    Starting point
-                  </span>
-                )}
-              </div>
-              <h3 className="display mt-8 text-3xl font-black leading-[.92] tracking-[-.055em]">
-                {scope.name}
+        <div className="mt-12">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-ink pb-3">
+            <div>
+              <p className="eyebrow">01 / Website packages</p>
+              <h3 className="display mt-2 text-3xl font-black leading-none tracking-[-.05em] sm:text-4xl">
+                Pick the right size for your business.
               </h3>
-              <p className="mt-3 font-mono text-sm font-bold uppercase tracking-wide">{scope.price}</p>
-              <p className="mt-4 text-sm leading-6 text-ink/75">{scope.intro}</p>
+            </div>
+            <p className="max-w-md text-sm leading-6 text-ink/70">
+              Both packages are built for mobile and include a basic SEO setup.
+            </p>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <article
+              className="flex flex-col border border-ink bg-paper p-6 sm:p-8"
+            >
+              <p className="eyebrow">One-page website</p>
+              <h4 className="display mt-5 text-3xl font-black leading-[.92] tracking-[-.055em]">
+                Starter Website
+              </h4>
+              <p className="mt-4 font-mono text-3xl font-bold tracking-tight">£270</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-ink/60">
+                One-off
+              </p>
+              <p className="mt-4 text-sm leading-6 text-ink/75">
+                One page containing the essential information customers need to understand your
+                business and contact you.
+              </p>
               <ul className="mt-6 grid gap-3 border-t border-ink/25 pt-5 text-sm leading-6">
-                {scope.details.map((detail) => (
+                {[
+                  "Business introduction and services",
+                  "Areas you cover",
+                  "Work gallery",
+                  "Contact details and enquiry options",
+                  "Mobile-friendly design",
+                  "Basic SEO setup",
+                ].map((detail) => (
                   <li key={detail} className="flex gap-3">
                     <Check className="mt-1 size-4 shrink-0" aria-hidden="true" />
                     {detail}
@@ -502,18 +724,259 @@ function Pricing() {
                 ))}
               </ul>
               <a
+                href="#package-deals"
+                className="mt-6 block border border-ink/25 bg-clay/60 p-4 transition-transform motion-safe:duration-200 motion-safe:hover:-translate-y-1"
+              >
+                <span className="eyebrow">Add Online Presence</span>
+                <span className="mt-2 block text-sm leading-5">
+                  Get the Online Presence Package for £55 instead of £70 when purchased with this
+                  website.
+                </span>
+                <span className="mt-3 block font-mono text-xs font-bold uppercase tracking-wide">
+                  Combined price: £325. Save £15.
+                </span>
+              </a>
+              <a
                 href="#contact"
                 className="mt-auto inline-flex items-center gap-2 pt-8 font-mono text-xs font-bold uppercase tracking-wider underline decoration-1 underline-offset-4"
               >
-                {scope.cta} <ArrowRight className="size-4" aria-hidden="true" />
+                Ask about Starter <ArrowRight className="size-4" aria-hidden="true" />
               </a>
             </article>
-          ))}
+            <article className="grid gap-6 border border-ink bg-signal p-6 sm:p-8 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
+              <div className="flex flex-col">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="eyebrow">3–5 page website</p>
+                  <span className="border border-ink px-2 py-1 font-mono text-[9px] uppercase tracking-wider">
+                    Recommended
+                  </span>
+                </div>
+                <h4 className="display mt-5 text-3xl font-black leading-[.92] tracking-[-.055em]">
+                  Complete Website
+                </h4>
+                <p className="mt-4 font-mono text-3xl font-bold tracking-tight">£400</p>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-ink/60">
+                  One-off
+                </p>
+                <p className="mt-4 text-sm leading-6 text-ink/75">
+                  A more developed website with separate pages for your services, business and
+                  previous work. Give customers more detail, make navigation easier and create more
+                  opportunities for relevant search content.
+                </p>
+                <ul className="mt-6 grid gap-3 border-t border-ink/25 pt-5 text-sm leading-6">
+                  {[
+                    "Everything in Starter",
+                    "Separate service pages with more detailed information",
+                    "Dedicated gallery or previous work page",
+                    "About page",
+                    "Dedicated contact and enquiry page",
+                    "More opportunities to target relevant services and locations through Google",
+                  ].map((detail) => (
+                    <li key={detail} className="flex gap-3">
+                      <Check className="mt-1 size-4 shrink-0" aria-hidden="true" />
+                      {detail}
+                    </li>
+                  ))}
+                </ul>
+                <a
+                  href="#package-deals"
+                  className="mt-6 block border border-ink/25 bg-paper/75 p-4 transition-transform motion-safe:duration-200 motion-safe:hover:-translate-y-1"
+                >
+                  <span className="eyebrow">Add Business Visibility</span>
+                  <span className="mt-2 block text-sm leading-5">
+                    Get the Business Visibility Package for £139 instead of £169 when purchased
+                    with this website.
+                  </span>
+                  <span className="mt-3 block font-mono text-xs font-bold uppercase tracking-wide">
+                    Combined price: £539. Save £30.
+                  </span>
+                </a>
+                <a
+                  href="#contact"
+                  className="mt-8 inline-flex items-center gap-2 pt-2 font-mono text-xs font-bold uppercase tracking-wider underline decoration-1 underline-offset-4"
+                >
+                  Ask about Complete <ArrowRight className="size-4" aria-hidden="true" />
+                </a>
+              </div>
+              <div className="relative mx-auto aspect-square w-full max-w-[280px] lg:max-w-none" aria-hidden="true">
+                <picture className="block size-full">
+                  <source
+                    media="(prefers-reduced-motion: reduce)"
+                    srcSet="/animations/study-discussion-static.svg"
+                  />
+                  <Image
+                    src="/animations/study-discussion.svg"
+                    alt=""
+                    width={1200}
+                    height={1200}
+                    unoptimized
+                    sizes="(max-width: 1023px) 70vw, 25vw"
+                    className="size-full object-contain"
+                  />
+                </picture>
+              </div>
+            </article>
+          </div>
         </div>
-        <p className="mt-5 max-w-3xl text-sm leading-6 text-ink/70">
-          The £400 figure is a starting price for a straightforward scope, not a promise that
-          every feature or ongoing cost is included. We’ll confirm what your project needs first.
-        </p>
+
+        <div id="package-deals" className="mt-16 scroll-target">
+          <div className="mb-5 border-b border-ink pb-3">
+            <p className="eyebrow">03 / Package deals</p>
+            <h3 className="display mt-2 text-3xl font-black leading-none tracking-[-.05em] sm:text-4xl">
+              Useful services, bundled for less.
+            </h3>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {packages.map((bundle) => (
+              <article key={bundle.name} className="flex flex-col border border-ink bg-paper p-6 sm:p-7">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h4 className="display text-2xl font-black leading-tight tracking-[-.04em]">
+                      {bundle.name}
+                    </h4>
+                    <p className="mt-3 font-mono text-2xl font-bold">{bundle.price}</p>
+                    <p className="mt-1 font-mono text-xs uppercase tracking-wide text-ink/65">
+                      Normally {bundle.regularPrice} · Save {bundle.saving}
+                    </p>
+                  </div>
+                  <span className="border border-ink px-2 py-1 font-mono text-[9px] uppercase tracking-wider">
+                    One-off
+                  </span>
+                </div>
+                <ul className="mt-6 grid gap-3 border-t border-ink/25 pt-5 text-sm leading-6">
+                  {bundle.details.map((detail) => (
+                    <li key={detail} className="flex gap-3">
+                      <Check className="mt-1 size-4 shrink-0" aria-hidden="true" />
+                      {detail}
+                    </li>
+                  ))}
+                </ul>
+                <a
+                  href="#contact"
+                  className="mt-auto inline-flex items-center gap-2 pt-8 font-mono text-xs font-bold uppercase tracking-wider underline decoration-1 underline-offset-4"
+                >
+                  Ask about this package <ArrowRight className="size-4" aria-hidden="true" />
+                </a>
+              </article>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-ink/65">
+            Business Visibility also excludes advertising spend and printing costs.
+          </p>
+        </div>
+
+        <div className="mt-16">
+          <div className="mb-5 border-b border-ink pb-3">
+            <p className="eyebrow">02 / Individual add-ons</p>
+            <h3 className="display mt-2 text-3xl font-black leading-none tracking-[-.05em] sm:text-4xl">
+              Add what’s useful.
+            </h3>
+          </div>
+          <div className="grid gap-px border border-ink bg-ink sm:grid-cols-2 lg:grid-cols-3">
+            {addOns.map((service) => (
+              <article key={service.name} className="flex flex-col bg-paper p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <h4 className="font-bold leading-6">{service.name}</h4>
+                  <p className="shrink-0 font-mono text-sm font-bold">{service.price}</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-ink/70">{service.description}</p>
+              </article>
+            ))}
+            <a
+              href="#contact"
+              className="group flex min-h-full flex-col justify-between bg-ink p-5 text-paper transition-colors hover:bg-moss focus-visible:outline-paper sm:p-6"
+            >
+              <div>
+                <h4 className="eyebrow text-paper">Not sure what you need?</h4>
+                <p className="mt-4 text-sm leading-6 text-paper/75">
+                  Tell me a little about your business and I&apos;ll help you work out which
+                  services would be useful.
+                </p>
+              </div>
+              <span className="mt-8 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-paper underline decoration-signal decoration-2 underline-offset-4">
+                Let&apos;s talk{" "}
+                <ArrowRight
+                  className="size-4 motion-safe:transition-transform motion-safe:duration-200 motion-safe:group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
+              </span>
+            </a>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-ink/65">
+            One-off setup prices. Advertising spend, printing and paid third-party services are
+            not included.
+          </p>
+        </div>
+
+        <div className="mt-16 grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
+          <div className="border border-ink bg-signal p-6 sm:p-8">
+            <p className="eyebrow">04 / Ongoing support</p>
+            <h3 className="display mt-4 text-3xl font-black leading-[.95] tracking-[-.05em]">
+              Website Care &amp; Support
+            </h3>
+            <p className="mt-4 font-mono text-3xl font-bold">£29/month</p>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-wider">Recurring</p>
+          </div>
+          <div className="border border-ink bg-paper p-6 sm:p-8">
+            <p className="eyebrow">A hand when you need it</p>
+            <ul className="mt-4 grid gap-3 text-sm leading-6 sm:grid-cols-2">
+              {[
+                "Basic website maintenance and checks",
+                "Contact form checks",
+                "Up to 30 minutes of small text and photo updates each month",
+                "Domain and website technical assistance",
+                "General website support",
+              ].map((detail) => (
+                <li key={detail} className="flex gap-3">
+                  <Check className="mt-1 size-4 shrink-0" aria-hidden="true" />
+                  {detail}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-5 border-t border-ink/25 pt-4 text-xs leading-5 text-ink/70">
+              Domain registration and renewals, paid third-party services and larger changes may
+              cost extra. This plan doesn’t include unlimited changes or support.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-16">
+          <div className="mb-5 border-b border-ink pb-3">
+            <p className="eyebrow">05 / Website + digital presence</p>
+            <h3 className="display mt-2 text-3xl font-black leading-none tracking-[-.05em] sm:text-4xl">
+              A website and the tools around it.
+            </h3>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {bundles.map((bundle) => (
+              <article key={bundle.name} className="flex flex-col border border-ink bg-ink p-6 text-paper sm:p-7">
+                <p className="eyebrow text-paper/65">One-off bundle</p>
+                <h4 className="display mt-4 text-2xl font-black leading-tight tracking-[-.04em]">
+                  {bundle.name}
+                </h4>
+                <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="font-mono text-3xl font-bold text-signal">{bundle.price}</p>
+                  <p className="font-mono text-xs text-paper/65">
+                    Normally {bundle.regularPrice} · Save {bundle.saving}
+                  </p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-paper/75">
+                  Includes {bundle.includes}.
+                </p>
+                <a
+                  href="#contact"
+                  className="mt-auto inline-flex items-center gap-2 pt-7 font-mono text-xs font-bold uppercase tracking-wider underline decoration-signal decoration-2 underline-offset-4"
+                >
+                  Ask about this bundle <ArrowRight className="size-4" aria-hidden="true" />
+                </a>
+              </article>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-ink/65">
+            The Starter bundle saves £15 compared with separate prices; the Complete bundle saves
+            £30. Bundle totals exclude advertising spend and printing costs.
+          </p>
+        </div>
       </div>
     </section>
   );
@@ -524,7 +987,7 @@ function FAQ() {
     {
       question: "Websites sound expensive. What does the price cover?",
       answer:
-        "A straightforward project starts from £400, with the final price based on the agreed scope. I’ll explain what’s included and any additional costs before work begins, so you can decide without pressure.",
+        "A one-page Starter Website is £270, and a 3–5 page Complete Website is £400. I’ll explain what’s included and any additional costs before work begins, so you can decide without pressure.",
     },
     {
       question: "I don’t have time to manage a website.",
@@ -535,6 +998,11 @@ function FAQ() {
       question: "I don’t know anything about websites. Is that a problem?",
       answer:
         "Not at all. You know your trade and your customers; I’ll explain the choices in plain English and handle the build. You can review the content and ask questions before anything goes live.",
+    },
+    {
+      question: "What does basic SEO setup mean?",
+      answer:
+        "Basic SEO setup helps search engines understand what your website and services are about. This includes descriptive page titles and descriptions, clear page headings, relevant service and location information, a sitemap and essential indexing setup. It provides a technical SEO foundation but does not guarantee Google rankings or specific search positions.",
     },
   ];
   const faqs = [...siteConfig.faqs, ...additionalFaqs];
@@ -637,10 +1105,12 @@ export function Contact() {
       phone: String(data.get("phone") ?? ""),
       message: String(data.get("message") ?? ""),
     };
-    if (!payload.email.trim() && !payload.phone.trim()) {
+    if (!hasContactMethod(payload)) {
       dispatch({
         type: "validation-error",
-        fieldErrors: { email: "Provide an email address or phone number." },
+        fieldErrors: {
+          email: missingContactMethodMessage,
+        },
       });
       focusField(form, "email");
       return;
@@ -740,7 +1210,12 @@ export function Contact() {
           <p className="eyebrow mb-6">A few details to get started</p>
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="eyebrow grid gap-2">
-              Your name
+              <span className="flex min-h-[2.4em] flex-col justify-between">
+                <span>Your name</span>
+                <span className="font-sans text-xs font-normal normal-case tracking-normal">
+                  Required
+                </span>
+              </span>
               <input
                 required
                 name="name"
@@ -757,7 +1232,12 @@ export function Contact() {
               )}
             </label>
             <label className="eyebrow grid gap-2">
-              Phone number <span className="font-sans normal-case tracking-normal">(or email)</span>
+              <span className="flex min-h-[2.4em] flex-col justify-between">
+                <span>Phone number</span>
+                <span className="font-sans text-xs font-normal normal-case tracking-normal">
+                  Optional if you provide an email address.
+                </span>
+              </span>
               <input
                 name="phone"
                 type="tel"
@@ -774,7 +1254,10 @@ export function Contact() {
               )}
             </label>
             <label className="eyebrow grid gap-2 sm:col-span-2">
-              Email address <span className="font-sans normal-case tracking-normal">(or phone)</span>
+              <span>Email address</span>
+              <span className="font-sans text-xs font-normal normal-case tracking-normal">
+                Optional if you provide a phone number.
+              </span>
               <input
                 name="email"
                 type="email"
@@ -882,11 +1365,15 @@ export function HomePage() {
         <ProjectScroll />
         <section id="work" className="scroll-target">
           <div className="container py-8 sm:py-10">
-            <p className="eyebrow">Selected work / One live project, two concepts</p>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/70">
-              The plastering site is a live client project. The electrical and roofing examples
-              are concepts—not client results or live businesses.
-            </p>
+            <ScrollTextReveal>
+              <p className="eyebrow">Selected work / One live project, two concepts</p>
+            </ScrollTextReveal>
+            <ScrollTextReveal delay={0.12}>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/70">
+                The plastering site is a live client project. The electrical and roofing examples
+                are concepts—not client results or live businesses.
+              </p>
+            </ScrollTextReveal>
           </div>
           {siteConfig.projects.map((project) => (
             <ProjectSection project={project} key={project.name} />
