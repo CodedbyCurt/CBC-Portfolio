@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-  class InvalidClientIpError extends Error {}
-  class RateLimitUnavailableError extends Error {}
-
   const query = {
     insert: vi.fn(),
     select: vi.fn(),
@@ -12,29 +9,15 @@ const mocks = vi.hoisted(() => {
   };
 
   return {
-    InvalidClientIpError,
-    RateLimitUnavailableError,
-    getContext: vi.fn((): { ip?: string } => ({ ip: "198.51.100.42" })),
     getSupabaseAdminClient: vi.fn(() => ({
       from: vi.fn(() => query),
     })),
-    limitEnquiryAttempts: vi.fn(),
     query,
   };
 });
 
-vi.mock("@netlify/functions", () => ({
-  getContext: mocks.getContext,
-}));
-
 vi.mock("@/lib/server/supabase-admin", () => ({
   getSupabaseAdminClient: mocks.getSupabaseAdminClient,
-}));
-
-vi.mock("@/lib/server/rate-limit", () => ({
-  InvalidClientIpError: mocks.InvalidClientIpError,
-  RateLimitUnavailableError: mocks.RateLimitUnavailableError,
-  limitEnquiryAttempts: mocks.limitEnquiryAttempts,
 }));
 
 import { POST } from "@/app/api/enquiries/route";
@@ -48,12 +31,6 @@ const validPayload = {
   email: "customer@example.test",
   phone: "+1 (202) 555-0101",
   message: "I would like to discuss a website.",
-};
-const successfulRateLimit = {
-  allowed: true as const,
-  limit: 5 as const,
-  remaining: 4,
-  resetAt: Date.now() + 60_000,
 };
 const originalEnvironment = {
   origins: process.env.ENQUIRY_ALLOWED_ORIGINS,
@@ -139,14 +116,10 @@ describe("POST /api/enquiries", () => {
   beforeEach(() => {
     process.env.ENQUIRY_ALLOWED_ORIGINS = ALLOWED_ORIGIN;
     setNodeEnvironment("test");
-    mocks.getContext.mockReset();
-    mocks.getContext.mockReturnValue({ ip: "198.51.100.42" });
     mocks.getSupabaseAdminClient.mockReset();
     mocks.getSupabaseAdminClient.mockReturnValue({
       from: vi.fn(() => mocks.query),
     });
-    mocks.limitEnquiryAttempts.mockReset();
-    mocks.limitEnquiryAttempts.mockResolvedValue(successfulRateLimit);
     mocks.query.insert.mockReset();
     mocks.query.insert.mockResolvedValue({ error: null });
     mocks.query.select.mockReset();
@@ -179,8 +152,6 @@ describe("POST /api/enquiries", () => {
       idempotency_key: IDEMPOTENCY_KEY,
       ...validPayload,
     });
-    expect(mocks.getContext).toHaveBeenCalledOnce();
-    expect(mocks.limitEnquiryAttempts).toHaveBeenCalledWith("198.51.100.42");
   });
 
   it.each([
@@ -205,7 +176,6 @@ describe("POST /api/enquiries", () => {
     const response = await POST(makeRequest(validPayload, { origin }));
 
     expect(response.status).toBe(403);
-    expect(mocks.limitEnquiryAttempts).not.toHaveBeenCalled();
     expect(mocks.query.insert).not.toHaveBeenCalled();
   });
 
@@ -321,7 +291,6 @@ describe("POST /api/enquiries", () => {
     );
 
     expect(response.status).toBe(413);
-    expect(mocks.getContext).not.toHaveBeenCalled();
   });
 
   it("rejects actual streamed bytes over the limit and cancels the stream", async () => {
@@ -334,7 +303,6 @@ describe("POST /api/enquiries", () => {
 
     expect(response.status).toBe(413);
     expect(wasCancelled()).toBe(true);
-    expect(mocks.getContext).not.toHaveBeenCalled();
   });
 
   it("enforces actual bytes when Content-Length is absent or misleading", async () => {
@@ -355,7 +323,6 @@ describe("POST /api/enquiries", () => {
     const response = await POST(makeRequest(validPayload, { idempotencyKey }));
 
     expect(response.status).toBe(400);
-    expect(mocks.getContext).not.toHaveBeenCalled();
   });
 
   it("returns field-specific validation errors without echoing submitted values", async () => {
@@ -368,7 +335,6 @@ describe("POST /api/enquiries", () => {
     const body = await responseJson(response);
     expect(body.errors).toMatchObject({ email: expect.any(String) });
     expect(JSON.stringify(body)).not.toContain(privateValue);
-    expect(mocks.getContext).not.toHaveBeenCalled();
   });
 
   it("rejects requests with both contact methods missing", async () => {
@@ -380,75 +346,6 @@ describe("POST /api/enquiries", () => {
     expect(mocks.query.insert).not.toHaveBeenCalled();
   });
 
-  it("uses only Netlify context IP and ignores spoofed forwarding headers", async () => {
-    const response = await POST(
-      makeRequest(validPayload, {
-        headers: {
-          "x-forwarded-for": "203.0.113.99",
-          forwarded: "for=203.0.113.100",
-        },
-      }),
-    );
-
-    expect(response.status).toBe(202);
-    expect(mocks.limitEnquiryAttempts).toHaveBeenCalledWith("198.51.100.42");
-    expect(mocks.limitEnquiryAttempts).not.toHaveBeenCalledWith(
-      "203.0.113.99",
-    );
-  });
-
-  it.each([
-    ["missing", undefined],
-    ["invalid", "not-an-ip"],
-  ])("fails closed for %s Netlify context IP", async (_label, ip) => {
-    mocks.getContext.mockImplementation(() => ({ ip }));
-
-    const response = await POST(makeRequest());
-
-    expect(response.status).toBe(503);
-    expect(mocks.limitEnquiryAttempts).not.toHaveBeenCalled();
-  });
-
-  it("fails closed when getContext throws", async () => {
-    mocks.getContext.mockImplementation(() => {
-      throw new Error("context unavailable");
-    });
-
-    const response = await POST(makeRequest());
-
-    expect(response.status).toBe(503);
-    expect(mocks.query.insert).not.toHaveBeenCalled();
-  });
-
-  it("returns 429 with Retry-After when rate limited", async () => {
-    mocks.limitEnquiryAttempts.mockResolvedValue({
-      allowed: false,
-      limit: 5,
-      remaining: 0,
-      resetAt: Date.now() + 30_000,
-      retryAfterSeconds: 30,
-    });
-
-    const response = await POST(makeRequest());
-
-    expect(response.status).toBe(429);
-    expect(response.headers.get("retry-after")).toBe("30");
-    expect(mocks.query.insert).not.toHaveBeenCalled();
-  });
-
-  it("returns 503 when rate limiting is unavailable", async () => {
-    mocks.limitEnquiryAttempts.mockRejectedValue(
-      new mocks.RateLimitUnavailableError("private provider error"),
-    );
-
-    const response = await POST(makeRequest());
-
-    expect(response.status).toBe(503);
-    expect(JSON.stringify(await responseJson(response))).not.toContain(
-      "private provider error",
-    );
-  });
-
   it("returns opaque 202 for a filled honeypot without inserting", async () => {
     const normal = await POST(makeRequest());
     const honeypot = await POST(
@@ -457,26 +354,7 @@ describe("POST /api/enquiries", () => {
 
     expect(honeypot.status).toBe(202);
     expect(await responseJson(honeypot)).toEqual(await responseJson(normal));
-    expect(mocks.limitEnquiryAttempts).toHaveBeenCalledTimes(2);
     expect(mocks.query.insert).toHaveBeenCalledOnce();
-  });
-
-  it("rate-limits honeypot submissions before returning their acknowledgement", async () => {
-    mocks.limitEnquiryAttempts.mockResolvedValue({
-      allowed: false,
-      limit: 5,
-      remaining: 0,
-      resetAt: Date.now() + 10_000,
-      retryAfterSeconds: 10,
-    });
-
-    const response = await POST(
-      makeRequest({ ...validPayload, website: "private honeypot value" }),
-    );
-
-    expect(response.status).toBe(429);
-    expect(mocks.limitEnquiryAttempts).toHaveBeenCalledOnce();
-    expect(mocks.query.insert).not.toHaveBeenCalled();
   });
 
   it("rejects a non-string honeypot field as an invalid request", async () => {
@@ -485,7 +363,6 @@ describe("POST /api/enquiries", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(mocks.limitEnquiryAttempts).not.toHaveBeenCalled();
   });
 
   it("returns 202 for an existing idempotency key with matching payload", async () => {
@@ -705,11 +582,4 @@ describe("POST /api/enquiries", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("does not include the trusted IP in response bodies", async () => {
-    const response = await POST(makeRequest());
-
-    expect(JSON.stringify(await responseJson(response))).not.toContain(
-      "198.51.100.42",
-    );
-  });
 });

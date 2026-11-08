@@ -1,5 +1,3 @@
-import { getContext } from "@netlify/functions";
-import { isIP } from "node:net";
 import { z } from "zod";
 import {
   getEnquiryAllowedOrigins,
@@ -11,11 +9,6 @@ import {
 import {
   getSupabaseAdminClient,
 } from "@/lib/server/supabase-admin";
-import {
-  InvalidClientIpError,
-  RateLimitUnavailableError,
-  limitEnquiryAttempts,
-} from "@/lib/server/rate-limit";
 
 const MAX_REQUEST_BYTES = 32 * 1024;
 const SUCCESS_BODY = {
@@ -289,37 +282,6 @@ async function processRequest(request: Request): Promise<Response> {
 
   const parsedEnquiry = enquirySchema.safeParse(requestFields.enquiry);
   if (!parsedEnquiry.success) return validationResponse(parsedEnquiry.error);
-
-  let clientIp: string | undefined;
-  try {
-    clientIp = getContext().ip;
-  } catch {
-    return errorResponse(503, "Enquiries are temporarily unavailable.");
-  }
-  if (!clientIp || isIP(clientIp) === 0) {
-    return errorResponse(503, "Enquiries are temporarily unavailable.");
-  }
-
-  let rateLimit;
-  try {
-    rateLimit = await limitEnquiryAttempts(clientIp);
-  } catch (error) {
-    if (
-      error instanceof InvalidClientIpError ||
-      error instanceof RateLimitUnavailableError
-    ) {
-      return errorResponse(503, "Enquiries are temporarily unavailable.");
-    }
-    return errorResponse(503, "Enquiries are temporarily unavailable.");
-  }
-
-  if (!rateLimit.allowed) {
-    return errorResponse(
-      429,
-      "Too many attempts. Please try again later.",
-      { "Retry-After": String(rateLimit.retryAfterSeconds) },
-    );
-  }
 
   if (requestFields.honeypotFilled) {
     return jsonResponse(SUCCESS_BODY, 202);

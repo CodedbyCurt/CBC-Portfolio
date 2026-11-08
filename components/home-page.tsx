@@ -1,9 +1,17 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useReducer, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, ArrowUpRight, Check, ChevronDown, Menu, Phone, X } from "lucide-react";
 import { siteConfig, type Project } from "@/lib/site-config";
+import {
+  enquiryFormReducer,
+  getEnquiryIdempotencyKey,
+  initialEnquiryFormState,
+  submitEnquiry,
+  type EnquiryField,
+  type EnquiryPayload,
+} from "@/lib/client/enquiry-submission";
 import { DevicePair } from "@/components/project-visual";
 import { ProjectScroll } from "@/components/project-scroll";
 import { SmoothScroll } from "@/components/smooth-scroll";
@@ -18,9 +26,6 @@ const navLinks = [
 const hasConfiguredPhone = siteConfig.phoneHref !== "+442000000000";
 const hasConfiguredEmail = !siteConfig.email.endsWith("@example.com");
 const hasConfiguredWhatsApp = !siteConfig.whatsappHref.endsWith("442000000000");
-const hasConfiguredFormspree = Boolean(
-  siteConfig.formspreeEndpoint && !siteConfig.formspreeEndpoint.includes("your-form-id"),
-);
 
 function Wordmark() {
   return (
@@ -607,59 +612,88 @@ function About() {
   );
 }
 
-function Contact() {
-  const [status, setStatus] = useState("");
+export function Contact() {
+  const [formState, dispatch] = useReducer(
+    enquiryFormReducer,
+    initialEnquiryFormState,
+  );
+  const submitting = useRef(false);
+  const idempotencyKeys = useRef(new Map<string, string>());
+  const focusField = (form: HTMLFormElement, field: EnquiryField) => {
+    const element = form.elements.namedItem(field);
+    if (element instanceof HTMLElement) element.focus();
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submitting.current) return;
     const form = event.currentTarget;
-    const phoneInput = form.elements.namedItem("phone");
-    const emailInput = form.elements.namedItem("email");
     if (!form.reportValidity()) return;
 
-    if (phoneInput instanceof HTMLInputElement && emailInput instanceof HTMLInputElement) {
-      if (!phoneInput.value.trim() && !emailInput.value.trim()) {
-        setStatus("Add a phone number or email address so I can reply.");
-        emailInput.focus();
-        return;
-      }
-    }
-
-    if (!hasConfiguredFormspree) {
-      if (!hasConfiguredEmail) {
-        setStatus("The enquiry form hasn’t been connected yet. Please try again later.");
-        return;
-      }
-      const data = new FormData(form);
-      window.location.href = `mailto:${siteConfig.email}?subject=${encodeURIComponent(
-        `Website enquiry from ${data.get("name")}`,
-      )}&body=${encodeURIComponent(
-        `Name: ${data.get("name")}\nPhone: ${data.get("phone")}\nEmail: ${data.get(
-          "email",
-        )}\n\n${data.get("message")}`,
-      )}`;
-      setStatus("Your email app should open with the details filled in.");
+    const data = new FormData(form);
+    const payload: EnquiryPayload = {
+      name: String(data.get("name") ?? ""),
+      email: String(data.get("email") ?? ""),
+      phone: String(data.get("phone") ?? ""),
+      message: String(data.get("message") ?? ""),
+    };
+    if (!payload.email.trim() && !payload.phone.trim()) {
+      dispatch({
+        type: "validation-error",
+        fieldErrors: { email: "Provide an email address or phone number." },
+      });
+      focusField(form, "email");
       return;
     }
 
-    setStatus("Sending your enquiry…");
+    let idempotencyKey: string;
     try {
-      const response = await fetch(siteConfig.formspreeEndpoint, {
-        method: "POST",
-        headers: { Accept: "application/json" },
-        body: new FormData(form),
-      });
-      if (!response.ok) throw new Error("The enquiry service returned an error.");
-      form.reset();
-      setStatus("Thanks—your enquiry has been sent. I’ll be in touch.");
-    } catch {
-      setStatus(
-        hasConfiguredPhone || hasConfiguredEmail
-          ? `That didn’t send. Please use the contact details on this page instead.`
-          : "That didn’t send. Please try again later.",
+      idempotencyKey = getEnquiryIdempotencyKey(
+        payload,
+        idempotencyKeys.current,
       );
+    } catch {
+      dispatch({
+        type: "error",
+        message: "We couldn’t prepare your enquiry. Please try again.",
+      });
+      return;
+    }
+
+    submitting.current = true;
+    dispatch({ type: "submitting" });
+    try {
+      const result = await submitEnquiry(payload, idempotencyKey);
+      if (result.type === "accepted") {
+        form.reset();
+        idempotencyKeys.current.clear();
+        dispatch({ type: "success" });
+      } else if (result.type === "validation-error") {
+        dispatch({
+          type: "validation-error",
+          fieldErrors: result.fieldErrors,
+        });
+        const firstInvalidField = (
+          ["name", "email", "phone", "message"] as const
+        ).find((field) => result.fieldErrors[field]);
+        if (firstInvalidField) {
+          focusField(form, firstInvalidField);
+        }
+      } else {
+        dispatch({
+          type: "error",
+          message:
+            "We couldn’t send your enquiry. Your details are still here—please try again.",
+        });
+      }
+    } finally {
+      submitting.current = false;
     }
   };
+
+  const fieldError = (field: EnquiryField) => formState.fieldErrors[field];
+  const onFieldChange = (field: EnquiryField) => () =>
+    dispatch({ type: "field-changed", field });
 
   return (
     <section id="contact" className="scroll-target bg-signal py-20 lg:py-28">
@@ -711,8 +745,16 @@ function Contact() {
                 required
                 name="name"
                 autoComplete="name"
+                aria-invalid={Boolean(fieldError("name"))}
+                aria-describedby={fieldError("name") ? "contact-name-error" : undefined}
+                onChange={onFieldChange("name")}
                 className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
               />
+              {fieldError("name") && (
+                <span id="contact-name-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
+                  {fieldError("name")}
+                </span>
+              )}
             </label>
             <label className="eyebrow grid gap-2">
               Phone number <span className="font-sans normal-case tracking-normal">(or email)</span>
@@ -720,8 +762,16 @@ function Contact() {
                 name="phone"
                 type="tel"
                 autoComplete="tel"
+                aria-invalid={Boolean(fieldError("phone"))}
+                aria-describedby={fieldError("phone") ? "contact-phone-error" : undefined}
+                onChange={onFieldChange("phone")}
                 className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
               />
+              {fieldError("phone") && (
+                <span id="contact-phone-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
+                  {fieldError("phone")}
+                </span>
+              )}
             </label>
             <label className="eyebrow grid gap-2 sm:col-span-2">
               Email address <span className="font-sans normal-case tracking-normal">(or phone)</span>
@@ -729,8 +779,16 @@ function Contact() {
                 name="email"
                 type="email"
                 autoComplete="email"
+                aria-invalid={Boolean(fieldError("email"))}
+                aria-describedby={fieldError("email") ? "contact-email-error" : undefined}
+                onChange={onFieldChange("email")}
                 className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
               />
+              {fieldError("email") && (
+                <span id="contact-email-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
+                  {fieldError("email")}
+                </span>
+              )}
             </label>
             <label className="eyebrow grid gap-2 sm:col-span-2">
               Your trade, service area and the work you want more of
@@ -738,16 +796,42 @@ function Contact() {
                 required
                 name="message"
                 rows={4}
+                aria-invalid={Boolean(fieldError("message"))}
+                aria-describedby={fieldError("message") ? "contact-message-error" : undefined}
+                onChange={onFieldChange("message")}
                 className="resize-y border border-ink bg-paper p-3 font-sans text-base normal-case tracking-normal"
                 placeholder="For example: plumbing in Leeds, mainly bathroom installs."
               />
+              {fieldError("message") && (
+                <span id="contact-message-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
+                  {fieldError("message")}
+                </span>
+              )}
             </label>
           </div>
-          <button className="button-primary mt-6 w-full" type="submit">
-            Send my enquiry <ArrowRight className="size-4" />
+          <button
+            className="button-primary mt-6 w-full"
+            type="submit"
+            disabled={formState.phase === "submitting"}
+            aria-busy={formState.phase === "submitting"}
+          >
+            {formState.phase === "submitting" ? "Sending…" : "Send my enquiry"}
+            {formState.phase === "submitting" ? (
+              <span
+                className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
+                aria-hidden="true"
+              />
+            ) : (
+              <ArrowRight className="size-4" aria-hidden="true" />
+            )}
           </button>
-          <p className="mt-4 min-h-5 text-sm leading-6" role="status" aria-live="polite">
-            {status || "No pressure—just a clear recommendation and quote."}
+          <p
+            className="mt-4 min-h-5 text-sm leading-6"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {formState.message}
           </p>
         </form>
       </div>

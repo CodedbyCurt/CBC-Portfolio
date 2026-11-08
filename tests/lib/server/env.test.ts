@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  getEmailDeliveryEnvironment,
   getEnquiryAllowedOrigins,
-  getRateLimitEnvironment,
   getSupabaseEnvironment,
 } from "@/lib/server/env";
 
 const environmentKeys = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
-  "UPSTASH_REDIS_REST_URL",
-  "UPSTASH_REDIS_REST_TOKEN",
-  "RATE_LIMIT_HASH_SECRET",
   "ENQUIRY_ALLOWED_ORIGINS",
+  "RESEND_API_KEY",
+  "RESEND_FROM_EMAIL",
+  "ENQUIRY_NOTIFICATION_EMAIL",
 ] as const;
 
 const originalEnvironment = Object.fromEntries(
@@ -21,10 +21,11 @@ const validSupabaseEnvironment = {
   SUPABASE_URL: "https://portfolio.example.test",
   SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
 };
-const validRateLimitEnvironment = {
-  UPSTASH_REDIS_REST_URL: "https://redis.example.test",
-  UPSTASH_REDIS_REST_TOKEN: "test-upstash-token",
-  RATE_LIMIT_HASH_SECRET: "test-hash-secret-with-at-least-32-characters",
+const validEmailDeliveryEnvironment = {
+  ...validSupabaseEnvironment,
+  RESEND_API_KEY: "test-resend-api-key",
+  RESEND_FROM_EMAIL: "curt@codedbycurt.co.uk",
+  ENQUIRY_NOTIFICATION_EMAIL: "codedbycurt@gmail.com",
 };
 
 function clearServiceEnvironment() {
@@ -85,51 +86,39 @@ describe("server environment validation", () => {
     );
   });
 
-  it("rejects malformed Upstash URLs and missing credentials", () => {
-    Object.assign(process.env, validRateLimitEnvironment);
-    process.env.UPSTASH_REDIS_REST_URL = "http://redis.example.test";
+  it("validates all email-worker credentials and addresses without exposing secrets", () => {
+    Object.assign(process.env, validEmailDeliveryEnvironment);
 
-    expect(() => getRateLimitEnvironment()).toThrow(
-      "must be an HTTPS URL without embedded credentials or a fragment",
-    );
-  });
-
-  it("rejects missing Upstash credentials", () => {
-    expect(() => getRateLimitEnvironment()).toThrow(
-      "UPSTASH_REDIS_REST_URL",
-    );
-    expect(() => getRateLimitEnvironment()).toThrow(
-      "UPSTASH_REDIS_REST_TOKEN",
-    );
-  });
-
-  it("rejects an HMAC secret shorter than 32 characters", () => {
-    Object.assign(process.env, {
-      ...validRateLimitEnvironment,
-      RATE_LIMIT_HASH_SECRET: "too-short",
+    expect(getEmailDeliveryEnvironment()).toMatchObject({
+      SUPABASE_URL: validSupabaseEnvironment.SUPABASE_URL,
+      RESEND_FROM_EMAIL: "curt@codedbycurt.co.uk",
+      ENQUIRY_NOTIFICATION_EMAIL: "codedbycurt@gmail.com",
     });
 
-    expect(() => getRateLimitEnvironment()).toThrow(
-      "must be at least 32 non-whitespace characters",
+    delete process.env.RESEND_API_KEY;
+    expect(() => getEmailDeliveryEnvironment()).toThrow("RESEND_API_KEY");
+    expect(() => getEmailDeliveryEnvironment()).not.toThrow(
+      "test-resend-api-key",
     );
   });
 
-  it("validates Supabase and rate-limit configuration independently", () => {
+  it("validates Supabase configuration independently from the Origin allowlist", () => {
     Object.assign(process.env, validSupabaseEnvironment);
 
     expect(getSupabaseEnvironment().SUPABASE_URL).toBe(
       validSupabaseEnvironment.SUPABASE_URL,
     );
-    expect(() => getRateLimitEnvironment()).toThrow(
-      "UPSTASH_REDIS_REST_URL",
+    expect(() => getEnquiryAllowedOrigins()).toThrow(
+      "ENQUIRY_ALLOWED_ORIGINS",
     );
 
-    clearServiceEnvironment();
-    Object.assign(process.env, validRateLimitEnvironment);
+    process.env.ENQUIRY_ALLOWED_ORIGINS = "https://portfolio.example.test";
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    expect(getRateLimitEnvironment().UPSTASH_REDIS_REST_URL).toBe(
-      validRateLimitEnvironment.UPSTASH_REDIS_REST_URL,
-    );
+    expect(getEnquiryAllowedOrigins()).toEqual([
+      "https://portfolio.example.test",
+    ]);
     expect(() => getSupabaseEnvironment()).toThrow("SUPABASE_URL");
   });
 

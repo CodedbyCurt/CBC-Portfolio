@@ -10,10 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@netlify/functions": "6.1.1",
+    "@netlify/functions": "^6.1.1",
     "@supabase/supabase-js": "^2.119.0",
-    "@upstash/ratelimit": "^2.2.0",
-    "@upstash/redis": "^1.41.0",
     "lenis": "^1.3.27",
     "lucide-react": "^1.63.0",
     "motion": "^14.7.1",
