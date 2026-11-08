@@ -22,6 +22,7 @@ Stage 1.6: Resend delivery worker implemented; external configuration and end-to
 - Owner notifications go to `codedbycurt@gmail.com`; customer confirmations are sent only to a valid stored email, replyable to `curt@codedbycurt.co.uk`. Email templates include escaped HTML and plain text.
 - Required worker settings are `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ENQUIRY_NOTIFICATION_EMAIL`. Configure them in local `.env.local` for local work and in Netlify environment variables for deployed contexts; secrets must remain server-side.
 - Netlify configuration points scheduled functions to `netlify/functions`; the worker runs every minute on published deploys and is not an unrestricted request endpoint. Scheduled functions require manual invocation for preview testing.
+- Netlify `SECRETS_SCAN_OMIT_KEYS` narrowly excludes `ENQUIRY_NOTIFICATION_EMAIL` and `RESEND_FROM_EMAIL`, which the confirmed build log flagged as email-address false positives; secret scanning remains enabled and all credential variables remain scanned.
 - The existing enquiry notification columns and claim function remain unchanged. The worker uses only `portfolio_email_deliveries`; no CRM integration or direct email sending was added to the enquiry API.
 - The project owner reports that a local test enquiry was stored and verified in the hosted `portfolio_enquiries` table. No live Resend or Supabase requests were made during this implementation; provider and database interactions in tests are mocked.
 
