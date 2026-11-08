@@ -195,7 +195,23 @@ export function Hero() {
     const video = videoRef.current;
     if (!video) return;
 
+    // The poster is the hero's complete fallback. Avoid downloading a 4.2 MB
+    // decorative video on smaller or data-conscious devices.
+    const connection = navigator as Navigator & {
+      connection?: { saveData?: boolean };
+    };
+    if (
+      connection.connection?.saveData ||
+      window.matchMedia("(max-width: 767px)").matches
+    ) {
+      return;
+    }
+
+    let hasLoaded = false;
+
     const loadAndPlay = () => {
+      if (hasLoaded) return;
+      hasLoaded = true;
       video.src = "/portfoliohero.mp4";
       video.load();
       void video.play().catch(() => undefined);
@@ -217,7 +233,12 @@ export function Hero() {
     );
     observer.observe(video);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    };
   }, [reduced]);
 
   const renderKineticLine = (text: string, signal = false) => (
@@ -1057,7 +1078,7 @@ function FAQ() {
         <div>
           {faqs.map((faq, index) => (
             <details key={faq.question} className="group border-t border-ink py-5">
-              <summary className="flex cursor-pointer list-none justify-between gap-6 text-base font-bold leading-6 sm:text-lg">
+            <summary className="flex cursor-pointer list-none justify-between gap-6 rounded-sm text-base font-bold leading-6 sm:text-lg">
                 <span>
                   <span className="mr-3 font-mono text-xs text-[#a03416]">
                     {String(index + 1).padStart(2, "0")}
@@ -1275,6 +1296,7 @@ export function Contact() {
               <input
                 name="phone"
                 type="tel"
+                inputMode="tel"
                 autoComplete="tel"
                 aria-invalid={Boolean(fieldError("phone"))}
                 aria-describedby={fieldError("phone") ? "contact-phone-error" : undefined}
@@ -1295,7 +1317,9 @@ export function Contact() {
               <input
                 name="email"
                 type="email"
+                inputMode="email"
                 autoComplete="email"
+                spellCheck={false}
                 aria-invalid={Boolean(fieldError("email"))}
                 aria-describedby={fieldError("email") ? "contact-email-error" : undefined}
                 onChange={onFieldChange("email")}
