@@ -9,6 +9,10 @@ import {
 import {
   getSupabaseAdminClient,
 } from "@/lib/server/supabase-admin";
+import {
+  consumeEnquiryRateLimit,
+  getEnquiryClientAddress,
+} from "@/lib/server/enquiry-rate-limit";
 
 const MAX_REQUEST_BYTES = 32 * 1024;
 const SUCCESS_BODY = {
@@ -264,6 +268,16 @@ async function processRequest(request: Request): Promise<Response> {
     return errorResponse(400, "A valid idempotency key is required.");
   }
 
+  const clientAddress = getEnquiryClientAddress(request);
+  if (!clientAddress) {
+    return errorResponse(503, "Enquiries are temporarily unavailable.");
+  }
+
+  const rateLimitPromise = consumeEnquiryRateLimit(clientAddress).then(
+    (result) => ({ result }),
+    () => ({ error: true as const }),
+  );
+
   let body: unknown;
   try {
     body = await readJsonBody(request);
@@ -275,6 +289,21 @@ async function processRequest(request: Request): Promise<Response> {
       return errorResponse(400, "The request body must be valid JSON.");
     }
     throw error;
+  }
+
+  const rateLimitState = await rateLimitPromise;
+  if ("error" in rateLimitState) {
+    return errorResponse(503, "Enquiries are temporarily unavailable.");
+  }
+  if (!rateLimitState.result.allowed) {
+    return errorResponse(
+      429,
+      "You’re sending requests too quickly. Please wait a few minutes and try again.",
+      {
+        "Retry-After": String(rateLimitState.result.retryAfterSeconds),
+        "Cache-Control": "no-store",
+      },
+    );
   }
 
   const requestFields = getRequestFields(body);

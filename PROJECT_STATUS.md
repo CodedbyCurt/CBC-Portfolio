@@ -12,7 +12,7 @@
 The portfolio site and enquiry email delivery are operational. Custom-domain DNS and HTTPS, Resend domain authentication, and IONOS mailbox delivery/forwarding to `codedbycurt@gmail.com` have been confirmed by the project owner.
 
 - Added `POST /api/enquiries` with exact Origin checks, bounded JSON reading, schema validation, honeypot handling, and idempotent Supabase persistence.
-- The public API currently has no distributed rate limiting. This remains a security and abuse-protection item requiring review before launch.
+- Added a Supabase-backed, atomic per-client rate limit of five requests per 15-minute window. The project owner reports that the migration has been applied to the hosted CBC Portfolio database.
 - The contact form now submits JSON to `/api/enquiries`, retains the same idempotency key for retries of the same payload, and reports loading, validation, success, and safe retry states accessibly.
 - Tests cover API routes, form submission, email worker/store behavior, schema validation, and migration contracts; provider and database interactions in automated tests are mocked.
 - The route relies on Next.js's Node.js default runtime because this app enables Cache Components, for which the installed Next.js documentation disallows a route `runtime` export.
@@ -32,7 +32,8 @@ Complete remaining security and launch-readiness review, with emphasis on public
 
 ## Outstanding work
 
-- Assess and implement effective public endpoint abuse protection, including whether distributed rate limiting is required.
+- Verify the rate-limit RPC is available to the server role in the hosted database before deploying the endpoint change.
+- Review remaining public endpoint abuse protections and deployment safeguards.
 - Review preview Origin configuration and isolated Supabase credentials for Deploy Previews.
 - Re-verify the email-delivery migration and queue RPC behavior if the hosted database configuration changes.
 - Complete SEO, accessibility, performance, legal, analytics, deployment, and production verification.

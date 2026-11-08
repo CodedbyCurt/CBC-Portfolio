@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => {
   return {
     getSupabaseAdminClient: vi.fn(() => ({
       from: vi.fn(() => query),
+      rpc: mocks.rpc,
     })),
+    rpc: vi.fn(),
     query,
   };
 });
@@ -26,6 +28,8 @@ const ROUTE_URL = "https://portfolio.example.test/api/enquiries";
 const ALLOWED_ORIGIN = "https://portfolio.example.test";
 const IDEMPOTENCY_KEY = "123e4567-e89b-42d3-a456-426614174000";
 const MAX_BODY_BYTES = 32 * 1024;
+const CLIENT_IP = "203.0.113.42";
+const SERVICE_ROLE_KEY = "test-service-role-key";
 const validPayload = {
   name: "Example Customer",
   email: "customer@example.test",
@@ -34,6 +38,8 @@ const validPayload = {
 };
 const originalEnvironment = {
   origins: process.env.ENQUIRY_ALLOWED_ORIGINS,
+  supabaseUrl: process.env.SUPABASE_URL,
+  serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
 };
 
 function setNodeEnvironment(value: string) {
@@ -48,6 +54,7 @@ function makeRequest(
     contentType?: string;
     headers?: HeadersInit;
     rawBody?: string;
+    clientIp?: string | null;
   } = {},
 ): Request {
   const headers = new Headers(options.headers);
@@ -57,6 +64,9 @@ function makeRequest(
   }
   if (options.idempotencyKey !== null) {
     headers.set("idempotency-key", options.idempotencyKey ?? IDEMPOTENCY_KEY);
+  }
+  if (options.clientIp !== null && !headers.has("x-nf-client-connection-ip")) {
+    headers.set("x-nf-client-connection-ip", options.clientIp ?? CLIENT_IP);
   }
 
   return new Request(ROUTE_URL, {
@@ -92,6 +102,7 @@ function createStreamRequest(
       "content-type": "application/json",
       origin: ALLOWED_ORIGIN,
       "idempotency-key": IDEMPOTENCY_KEY,
+      "x-nf-client-connection-ip": CLIENT_IP,
       ...Object.fromEntries(new Headers(headers)),
     }),
     body: stream,
@@ -115,10 +126,18 @@ function matchingStoredRow() {
 describe("POST /api/enquiries", () => {
   beforeEach(() => {
     process.env.ENQUIRY_ALLOWED_ORIGINS = ALLOWED_ORIGIN;
+    process.env.SUPABASE_URL = "https://portfolio.example.test";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY;
     setNodeEnvironment("test");
     mocks.getSupabaseAdminClient.mockReset();
     mocks.getSupabaseAdminClient.mockReturnValue({
       from: vi.fn(() => mocks.query),
+      rpc: mocks.rpc,
+    });
+    mocks.rpc.mockReset();
+    mocks.rpc.mockResolvedValue({
+      data: [{ allowed: true, retry_after_seconds: 900 }],
+      error: null,
     });
     mocks.query.insert.mockReset();
     mocks.query.insert.mockResolvedValue({ error: null });
@@ -136,6 +155,16 @@ describe("POST /api/enquiries", () => {
     } else {
       process.env.ENQUIRY_ALLOWED_ORIGINS = originalEnvironment.origins;
     }
+    if (originalEnvironment.supabaseUrl === undefined) {
+      delete process.env.SUPABASE_URL;
+    } else {
+      process.env.SUPABASE_URL = originalEnvironment.supabaseUrl;
+    }
+    if (originalEnvironment.serviceRoleKey === undefined) {
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    } else {
+      process.env.SUPABASE_SERVICE_ROLE_KEY = originalEnvironment.serviceRoleKey;
+    }
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
@@ -152,6 +181,94 @@ describe("POST /api/enquiries", () => {
       idempotency_key: IDEMPOTENCY_KEY,
       ...validPayload,
     });
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "consume_portfolio_enquiry_rate_limit",
+      { p_client_fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/) },
+    );
+    expect(mocks.rpc.mock.calls[0]?.[1]).not.toEqual({
+      p_client_fingerprint: CLIENT_IP,
+    });
+  });
+
+  it("returns 429 with Retry-After when the shared rate limit is exceeded", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: [{ allowed: false, retry_after_seconds: 47 }],
+      error: null,
+    });
+
+    const response = await POST(makeRequest());
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("47");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await responseJson(response)).toMatchObject({
+      success: false,
+      message: expect.stringContaining("too quickly"),
+    });
+    expect(mocks.query.insert).not.toHaveBeenCalled();
+    expect(mocks.query.select).not.toHaveBeenCalled();
+  });
+
+  it("groups IPv6 privacy addresses in the same /64 rate-limit bucket", async () => {
+    await POST(
+      makeRequest(validPayload, {
+        headers: {
+          "x-nf-client-connection-ip": "2001:db8:abcd:0012::1",
+        },
+      }),
+    );
+    await POST(
+      makeRequest(validPayload, {
+        headers: {
+          "x-nf-client-connection-ip": "2001:0db8:abcd:12:ffff::1234",
+        },
+      }),
+    );
+
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+    expect(mocks.rpc.mock.calls[0]?.[1]).toEqual(
+      mocks.rpc.mock.calls[1]?.[1],
+    );
+  });
+
+  it("fails closed without trusting a client-supplied forwarding header", async () => {
+    setNodeEnvironment("production");
+
+    const response = await POST(
+      makeRequest(validPayload, {
+        clientIp: null,
+        headers: { "x-forwarded-for": CLIENT_IP },
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.query.insert).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the shared rate limiter is unavailable", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: "08006", message: "private database response" },
+    });
+
+    const response = await POST(makeRequest());
+
+    expect(response.status).toBe(503);
+    expect(JSON.stringify(await responseJson(response))).not.toContain("private");
+    expect(mocks.query.insert).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the shared rate limiter returns an invalid result", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: [{ allowed: "yes", retry_after_seconds: "later" }],
+      error: null,
+    });
+
+    const response = await POST(makeRequest());
+
+    expect(response.status).toBe(503);
+    expect(mocks.query.insert).not.toHaveBeenCalled();
   });
 
   it.each([
