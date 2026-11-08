@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import "./globals.css";
 import { siteConfig } from "@/lib/site-config";
@@ -22,6 +23,6 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return <html lang="en" className={`${archivo.variable} ${dmSans.variable} ${plexMono.variable}`}><body>{children}</body></html>;
 }

@@ -9,6 +9,11 @@ describe("sitemap", () => {
         changeFrequency: "monthly",
         priority: 1,
       },
+      {
+        url: "https://codedbycurt.co.uk/websites-for-tradespeople",
+        changeFrequency: "monthly",
+        priority: 0.8,
+      },
     ]);
   });
 });

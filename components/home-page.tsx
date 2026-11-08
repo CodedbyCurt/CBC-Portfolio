@@ -2,6 +2,7 @@
 
 import { Fragment, type FormEvent, type ReactNode, useEffect, useReducer, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "motion/react";
+import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check, ChevronDown, Menu, Phone, X } from "lucide-react";
 import Image from "next/image";
 import { siteConfig, type Project } from "@/lib/site-config";
@@ -1335,6 +1336,7 @@ function Footer() {
         <div className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-wider text-paper/60">
           <a className="transition-colors hover:text-paper" href="#work">Work</a>
           <a className="transition-colors hover:text-paper" href="#pricing">Pricing</a>
+          <Link className="transition-colors hover:text-paper" href="/websites-for-tradespeople">Trade websites</Link>
           <a className="transition-colors hover:text-paper" href="#contact">Get in touch</a>
           <span>© 2026 {siteConfig.name}</span>
         </div>
