@@ -260,7 +260,7 @@ export function Hero() {
       <video
         ref={videoRef}
         className="absolute inset-0 -z-20 size-full object-cover"
-        poster="/portfoliohero-poster.jpg"
+        poster="/portfoliohero-poster.avif"
         loop
         muted
         playsInline

@@ -14,7 +14,7 @@ describe("homepage hero typewriter fallback", () => {
       '<span class="kinetic-char"><span class="kinetic-char-sizer" aria-hidden="true">L</span><span class="kinetic-char-glyph">L</span></span>',
     );
     expect(markup).toContain("A CLEAR STARTING POINT. A PRICE AGREED UP FRONT.");
-    expect(markup).toContain('poster="/portfoliohero-poster.jpg"');
+    expect(markup).toContain('poster="/portfoliohero-poster.avif"');
     expect(markup).toContain('preload="none"');
     expect(markup).not.toContain("<source src=\"/portfoliohero.mp4\"");
     expect(markup).toContain('<span class="sr-only">SHOWCASE YOUR WORK.</span>');
