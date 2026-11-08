@@ -10,9 +10,15 @@ const plexMono = localFont({ src: "./fonts/ibm-plex-mono-latin.woff2", variable:
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   alternates: { canonical: siteConfig.url },
-  title: { default: `${siteConfig.name} | Websites for UK tradespeople`, template: `%s | ${siteConfig.name}` },
+  title: { default: `${siteConfig.businessName} | Website Design for UK Tradespeople & Small Businesses`, template: `%s | ${siteConfig.businessName}` },
   description: siteConfig.description,
-  openGraph: { type: "website", locale: "en_GB", url: siteConfig.url, siteName: siteConfig.name, title: `${siteConfig.name} | Websites for UK tradespeople`, description: siteConfig.description },
+  openGraph: { type: "website", locale: "en_GB", url: siteConfig.url, siteName: siteConfig.businessName, title: `${siteConfig.businessName} | Website Design for UK Tradespeople & Small Businesses`, description: siteConfig.description },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteConfig.businessName} | Website Design for UK Tradespeople & Small Businesses`,
+    description: siteConfig.description,
+    images: [{ url: new URL("/opengraph-image", siteConfig.url), alt: "Coded by Curt — websites for UK tradespeople and small businesses" }],
+  },
   robots: { index: true, follow: true },
 };
 

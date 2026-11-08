@@ -6,8 +6,10 @@ import { siteConfig } from "@/lib/site-config";
 
 describe("production site configuration", () => {
   it("uses the production domain and public email without unconfirmed contact links", () => {
+    expect(siteConfig.businessName).toBe("Coded by Curt");
     expect(siteConfig.url).toBe("https://codedbycurt.co.uk");
     expect(siteConfig.email).toBe("curt@codedbycurt.co.uk");
+    expect(siteConfig.serviceArea).toBe("United Kingdom");
     expect(siteConfig.phone).toBe("");
     expect(siteConfig.phoneHref).toBe("");
     expect(siteConfig.whatsappHref).toBe("");
@@ -22,8 +24,11 @@ describe("production site configuration", () => {
     )?.[1];
     expect(structuredData).toBeDefined();
     expect(JSON.parse(structuredData ?? "{}")).toMatchObject({
+      name: "Coded by Curt",
       url: "https://codedbycurt.co.uk",
       email: "curt@codedbycurt.co.uk",
+      areaServed: { "@type": "Country", name: "United Kingdom" },
+      serviceType: "Website design and development for tradespeople and small businesses",
     });
     expect(JSON.parse(structuredData ?? "{}")).not.toHaveProperty("telephone");
   });

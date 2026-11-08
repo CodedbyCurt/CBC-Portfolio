@@ -1347,13 +1347,13 @@ export function HomePage() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
-    name: siteConfig.name,
+    name: siteConfig.businessName,
     description: siteConfig.description,
     url: siteConfig.url,
     ...(hasConfiguredEmail ? { email: siteConfig.email } : {}),
     ...(hasConfiguredPhone ? { telephone: siteConfig.phone } : {}),
-    areaServed: siteConfig.serviceArea,
-    serviceType: "Web design for trades businesses",
+    areaServed: { "@type": "Country", name: siteConfig.serviceArea },
+    serviceType: "Website design and development for tradespeople and small businesses",
   };
 
   return (

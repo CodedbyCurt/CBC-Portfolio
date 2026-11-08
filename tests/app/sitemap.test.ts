@@ -1,0 +1,14 @@
+import { describe, expect, it } from "vitest";
+import sitemap from "@/app/sitemap";
+
+describe("sitemap", () => {
+  it("uses the canonical production URL without a generated last-modified date", () => {
+    expect(sitemap()).toEqual([
+      {
+        url: "https://codedbycurt.co.uk",
+        changeFrequency: "monthly",
+        priority: 1,
+      },
+    ]);
+  });
+});

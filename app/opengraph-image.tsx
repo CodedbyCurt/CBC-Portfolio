@@ -7,7 +7,7 @@ export const contentType = "image/png";
 export default function OpenGraphImage() {
   return new ImageResponse(
     <div style={{ background: "#f4f0e8", color: "#171714", display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between", padding: "64px", width: "100%" }}>
-      <div style={{ display: "flex", fontSize: 31, fontWeight: 800, letterSpacing: -2 }}>{siteConfig.name.toUpperCase()}</div>
+      <div style={{ display: "flex", fontSize: 31, fontWeight: 800, letterSpacing: -2 }}>{siteConfig.businessName.toUpperCase()}</div>
       <div style={{ display: "flex", flexDirection: "column", fontSize: 108, fontWeight: 900, letterSpacing: -9, lineHeight: 0.83 }}>
         <span>LOOK THE PART.</span><span style={{ color: "#f05a28" }}>BE EASY TO CHOOSE.</span>
       </div>
