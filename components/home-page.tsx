@@ -81,26 +81,26 @@ function Header() {
         <Wordmark />
         <nav className="hidden items-center gap-7 lg:flex" aria-label="Main navigation">
           {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className="eyebrow transition-colors hover:text-signal">
+            <a key={link.href} href={link.href} className="eyebrow inline-flex min-h-11 items-center transition-colors hover:text-signal">
               {link.label}
             </a>
           ))}
         </nav>
         <div className="hidden lg:block">
-          <a href="#contact" className="button-primary !min-h-10">
+          <a href="#contact" className="button-primary !min-h-11">
             Talk through your website <ArrowRight className="size-4" />
           </a>
         </div>
         <div className="flex items-center gap-3 lg:hidden">
           <a
             href="#contact"
-            className="font-mono text-[10px] font-bold tracking-tight underline decoration-signal decoration-2 underline-offset-4"
+            className="inline-flex min-h-11 items-center font-mono text-[10px] font-bold tracking-tight underline decoration-signal decoration-2 underline-offset-4"
           >
             Get a quote
           </a>
           <button
             type="button"
-            className="grid size-10 place-items-center border border-paper/50"
+            className="grid size-11 place-items-center border border-paper/50"
             onClick={() => setOpen(!open)}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
@@ -141,11 +141,14 @@ function Header() {
 
 export function Hero() {
   const reduced = useReducedMotion();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [typewriterText, setTypewriterText] = useState<string>(
     heroTypewriterPhrases[0],
   );
 
   useEffect(() => {
+    if (reduced !== false) return;
+
     let phraseIndex = 0;
     let characterIndex = heroTypewriterPhrases[phraseIndex].length;
     let deleting = true;
@@ -184,7 +187,38 @@ export function Hero() {
 
     timeout = setTimeout(tick, 2000);
     return () => clearTimeout(timeout);
-  }, []);
+  }, [reduced]);
+
+  useEffect(() => {
+    if (reduced !== false) return;
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    const loadAndPlay = () => {
+      video.src = "/portfoliohero.mp4";
+      video.load();
+      void video.play().catch(() => undefined);
+    };
+
+    if (!("IntersectionObserver" in window)) {
+      loadAndPlay();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          loadAndPlay();
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px 0px" },
+    );
+    observer.observe(video);
+
+    return () => observer.disconnect();
+  }, [reduced]);
 
   const renderKineticLine = (text: string, signal = false) => (
     <span
@@ -203,16 +237,15 @@ export function Hero() {
   return (
     <section id="top" className="relative isolate overflow-hidden bg-ink text-paper">
       <video
+        ref={videoRef}
         className="absolute inset-0 -z-20 size-full object-cover"
-        autoPlay={!reduced}
+        poster="/portfoliohero-poster.jpg"
         loop
         muted
         playsInline
-        preload="metadata"
+        preload="none"
         aria-hidden="true"
-      >
-        <source src="/portfoliohero.mp4" type="video/mp4" />
-      </video>
+      />
       <div className="absolute inset-0 -z-10 bg-ink/70" aria-hidden="true" />
       <div
         className="absolute inset-0 -z-10 bg-gradient-to-r from-ink/85 via-ink/60 to-ink/25"
@@ -247,7 +280,7 @@ export function Hero() {
                 A CLEAR STARTING POINT. A PRICE AGREED UP FRONT.
               </span>
               <span className="col-start-1 row-start-1">
-                {typewriterText}
+                {reduced === true ? heroTypewriterPhrases[0] : typewriterText}
                 <span className="hero-typewriter-cursor" aria-hidden="true" />
               </span>
             </span>
@@ -352,15 +385,15 @@ function ProjectSection({ project }: { project: Project }) {
           <ScrollTextReveal delay={0.2}>
             <dl className="mt-8 space-y-5 border-t border-current/50 pt-5">
               <div>
-                <dt className="eyebrow opacity-70">The customer’s challenge</dt>
+                <dt className={`eyebrow ${project.tone === "moss" ? "text-paper/80" : "text-ink"}`}>The customer’s challenge</dt>
                 <dd className="mt-2 text-base leading-7 sm:text-lg">{project.problem}</dd>
               </div>
               <div>
-                <dt className="eyebrow opacity-70">The approach</dt>
+                <dt className={`eyebrow ${project.tone === "moss" ? "text-paper/80" : "text-ink"}`}>The approach</dt>
                 <dd className="mt-2 text-base leading-7 sm:text-lg">{project.built}</dd>
               </div>
               <div>
-                <dt className="eyebrow opacity-70">What the site makes easier</dt>
+                <dt className={`eyebrow ${project.tone === "moss" ? "text-paper/80" : "text-ink"}`}>What the site makes easier</dt>
                 <dd className="mt-2 text-base leading-7 sm:text-lg">{project.result}</dd>
               </div>
             </dl>
@@ -1026,7 +1059,7 @@ function FAQ() {
             <details key={faq.question} className="group border-t border-ink py-5">
               <summary className="flex cursor-pointer list-none justify-between gap-6 text-base font-bold leading-6 sm:text-lg">
                 <span>
-                  <span className="mr-3 font-mono text-xs text-signal">
+                  <span className="mr-3 font-mono text-xs text-[#a03416]">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   {faq.question}
@@ -1334,10 +1367,10 @@ function Footer() {
           </p>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-wider text-paper/60">
-          <a className="transition-colors hover:text-paper" href="#work">Work</a>
-          <a className="transition-colors hover:text-paper" href="#pricing">Pricing</a>
-          <Link className="transition-colors hover:text-paper" href="/websites-for-tradespeople">Trade websites</Link>
-          <a className="transition-colors hover:text-paper" href="#contact">Get in touch</a>
+          <a className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="#work">Work</a>
+          <a className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="#pricing">Pricing</a>
+          <Link className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="/websites-for-tradespeople">Trade websites</Link>
+          <a className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="#contact">Get in touch</a>
           <span>© 2026 {siteConfig.name}</span>
         </div>
       </div>
@@ -1362,7 +1395,7 @@ export function HomePage() {
     <>
       <SmoothScroll />
       <Header />
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <Hero />
         <ProjectScroll />
         <section id="work" className="scroll-target">

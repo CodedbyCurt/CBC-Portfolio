@@ -132,20 +132,20 @@ export default function TradespeoplePage() {
             CODED <span className="text-signal">BY</span> CURT
           </Link>
           <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[10px] font-bold uppercase tracking-wider sm:text-xs" aria-label="Page navigation">
-            <Link className="transition-colors hover:text-signal" href="/#work">
+            <Link className="inline-flex min-h-11 items-center transition-colors hover:text-signal" href="/#work">
               Work
             </Link>
-            <Link className="transition-colors hover:text-signal" href="/#pricing">
+            <Link className="inline-flex min-h-11 items-center transition-colors hover:text-signal" href="/#pricing">
               Pricing
             </Link>
-            <Link className="transition-colors hover:text-signal" href="/#contact">
+            <Link className="inline-flex min-h-11 items-center transition-colors hover:text-signal" href="/#contact">
               Get in touch
             </Link>
           </nav>
         </div>
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section className="bg-paper py-20 sm:py-28 lg:py-36">
           <div className="container">
             <p className="eyebrow border-t border-ink pt-5">
@@ -195,7 +195,7 @@ export default function TradespeoplePage() {
                 <div className="mt-8 grid gap-px border border-ink bg-ink sm:grid-cols-2">
                   {customerQuestions.map((item, index) => (
                     <article key={item.title} className="bg-paper p-5 sm:p-6">
-                      <p className="font-mono text-xs font-bold text-signal">
+                      <p className="font-mono text-xs font-bold text-[#a03416]">
                         0{index + 1}
                       </p>
                       <h3 className="display mt-5 text-2xl font-black leading-none tracking-[-.04em]">
@@ -234,7 +234,7 @@ export default function TradespeoplePage() {
                       key={item.number}
                       className="grid gap-3 py-5 sm:grid-cols-[4rem_1fr] sm:gap-5 sm:py-6"
                     >
-                      <span className="font-mono text-sm font-bold text-signal">
+                      <span className="font-mono text-sm font-bold text-[#a03416]">
                         {item.number}
                       </span>
                       <div>
@@ -404,7 +404,7 @@ export default function TradespeoplePage() {
                 <details key={faq.question} className="group border-t border-ink py-5">
                   <summary className="flex cursor-pointer list-none justify-between gap-6 text-base font-bold leading-6 sm:text-lg">
                     <span>
-                      <span className="mr-3 font-mono text-xs text-signal">
+                      <span className="mr-3 font-mono text-xs text-[#a03416]">
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       {faq.question}
@@ -483,16 +483,16 @@ export default function TradespeoplePage() {
             className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-wider text-paper/60"
             aria-label="Footer navigation"
           >
-            <Link className="transition-colors hover:text-paper" href="/">
+            <Link className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="/">
               Home
             </Link>
-            <Link className="transition-colors hover:text-paper" href="/#work">
+            <Link className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="/#work">
               Work
             </Link>
-            <Link className="transition-colors hover:text-paper" href="/#pricing">
+            <Link className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="/#pricing">
               Pricing
             </Link>
-            <Link className="transition-colors hover:text-paper" href="/#contact">
+            <Link className="inline-flex min-h-8 items-center transition-colors hover:text-paper" href="/#contact">
               Get in touch
             </Link>
           </nav>

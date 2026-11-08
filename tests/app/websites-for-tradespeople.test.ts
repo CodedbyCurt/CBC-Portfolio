@@ -11,6 +11,7 @@ describe("websites for tradespeople page", () => {
 
     expect(markup.match(/<h1\b/g)).toHaveLength(1);
     expect(markup).toContain("WEBSITES BUILT AROUND YOUR TRADE.");
+    expect(markup).toContain('id="main-content"');
     expect(markup).toContain("Website design for tradespeople");
     expect(markup).toContain("Do tradespeople really need a website if they already use Facebook?");
     expect(markup).toContain("Will my website automatically appear at the top of Google?");

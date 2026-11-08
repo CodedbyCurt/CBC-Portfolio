@@ -24,5 +24,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return <html lang="en" className={`${archivo.variable} ${dmSans.variable} ${plexMono.variable}`}><body>{children}</body></html>;
+  return <html lang="en" className={`${archivo.variable} ${dmSans.variable} ${plexMono.variable}`}><body><a className="skip-link" href="#main-content">Skip to content</a>{children}</body></html>;
 }
