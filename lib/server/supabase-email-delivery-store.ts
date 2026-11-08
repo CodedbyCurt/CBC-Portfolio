@@ -1,8 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { EmailDeliveryStore } from "@/lib/server/email-delivery-worker";
+import {
+  EmailDeliveryDatabaseError,
+  type EmailDeliveryStore,
+} from "@/lib/server/email-delivery-worker";
 
 function throwOnRpcError(error: unknown): void {
-  if (error) throw new Error("Email delivery database operation failed.");
+  if (error) throw new EmailDeliveryDatabaseError(error);
 }
 
 export function createSupabaseEmailDeliveryStore(

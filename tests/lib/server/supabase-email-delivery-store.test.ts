@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
+import { EmailDeliveryDatabaseError } from "@/lib/server/email-delivery-worker";
 import { createSupabaseEmailDeliveryStore } from "@/lib/server/supabase-email-delivery-store";
 
 describe("Supabase email delivery store", () => {
@@ -75,5 +76,51 @@ describe("Supabase email delivery store", () => {
     expect(from).toHaveBeenCalledWith("portfolio_enquiries");
     expect(select).toHaveBeenCalledWith("id, name, email, phone, message");
     expect(eq).toHaveBeenCalledWith("id", "enquiry-id");
+  });
+
+  it("retains only allowlisted Supabase error codes for safe diagnostics", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: "42501",
+        message: "private enquiry information",
+      },
+    });
+    const client = { rpc, from: vi.fn() } as unknown as SupabaseClient;
+    const store = createSupabaseEmailDeliveryStore(client);
+
+    let caught: unknown;
+    try {
+      await store.claimBatch(5);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(EmailDeliveryDatabaseError);
+    expect(caught).toMatchObject({ code: "42501" });
+    expect(caught).not.toHaveProperty("message", "private enquiry information");
+  });
+
+  it("drops database error codes outside the allowlist", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: "PRIVATE-CODE",
+        message: "private enquiry information",
+      },
+    });
+    const client = { rpc, from: vi.fn() } as unknown as SupabaseClient;
+    const store = createSupabaseEmailDeliveryStore(client);
+
+    let caught: unknown;
+    try {
+      await store.claimBatch(5);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(EmailDeliveryDatabaseError);
+    expect(caught).not.toHaveProperty("code");
+    expect(caught).not.toHaveProperty("message", "private enquiry information");
   });
 });

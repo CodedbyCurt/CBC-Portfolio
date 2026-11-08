@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createCustomerEmail,
   createOwnerEmail,
+  EmailDeliveryDatabaseError,
+  EmailDeliveryWorkerError,
   escapeEmailHtml,
   runEmailDeliveryBatch,
   type EmailDeliveryStore,
@@ -39,10 +41,14 @@ const enquiry = {
 function createStore(options: {
   claims?: unknown;
   enquiryById?: Map<string, unknown>;
-  claimError?: boolean;
+  claimError?: unknown;
 } = {}) {
   const claimBatch = vi.fn(async (): Promise<unknown> => {
-    if (options.claimError) throw new Error("private database detail");
+    if (options.claimError) {
+      throw options.claimError === true
+        ? new Error("private database detail")
+        : options.claimError;
+    }
     return options.claims ?? [ownerDelivery];
   });
   const findEnquiry = vi.fn(async (id: string): Promise<unknown> => {
@@ -313,8 +319,78 @@ describe("email delivery worker", () => {
   it("propagates unexpected claim failures without exposing provider or database details", async () => {
     const store = createStore({ claimError: true });
 
+    const reportDiagnostic = vi.fn();
+
+    await expect(
+      runEmailDeliveryBatch(
+        store.store,
+        config,
+        createFetch(200),
+        reportDiagnostic,
+      ),
+    ).rejects.toMatchObject({
+      diagnostic: { category: "initial_claim_rpc" },
+    } satisfies Partial<EmailDeliveryWorkerError>);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+  });
+
+  it("includes only an allowlisted database code for initial claim failures", async () => {
+    const store = createStore({
+      claimError: new EmailDeliveryDatabaseError({
+        code: "42501",
+        message: "private database detail",
+      }),
+    });
+
     await expect(
       runEmailDeliveryBatch(store.store, config, createFetch(200)),
-    ).rejects.toThrow("Email delivery claim failed");
+    ).rejects.toMatchObject({
+      diagnostic: { category: "initial_claim_rpc", code: "42501" },
+    });
+  });
+
+  it("reports subsequent database processing with only a safe code", async () => {
+    const store = createStore();
+    store.findEnquiry.mockRejectedValue(
+      new EmailDeliveryDatabaseError({
+        code: "42501",
+        message: "private customer information",
+      }),
+    );
+    const reportDiagnostic = vi.fn();
+
+    const result = await runEmailDeliveryBatch(
+      store.store,
+      config,
+      createFetch(200),
+      reportDiagnostic,
+    );
+
+    expect(result.retried).toBe(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith({
+      category: "database_processing",
+      code: "42501",
+    });
+    expect(JSON.stringify(reportDiagnostic.mock.calls)).not.toContain(
+      "private customer information",
+    );
+  });
+
+  it("reports stale claim-token transitions without exposing row details", async () => {
+    const store = createStore();
+    store.complete.mockResolvedValue(false);
+    const reportDiagnostic = vi.fn();
+
+    await runEmailDeliveryBatch(
+      store.store,
+      config,
+      createFetch(200),
+      reportDiagnostic,
+    );
+
+    expect(reportDiagnostic).toHaveBeenCalledWith({
+      category: "database_processing",
+      code: "stale_claim",
+    });
   });
 });

@@ -22,6 +22,78 @@ const enquirySchema = z.object({
 
 const emailSchema = z.email();
 
+const safeDatabaseErrorCodes = new Set([
+  "08000",
+  "08001",
+  "08003",
+  "08006",
+  "22023",
+  "23503",
+  "23505",
+  "23514",
+  "42703",
+  "42883",
+  "42P01",
+  "42501",
+  "PGRST116",
+  "PGRST202",
+  "PGRST204",
+  "PGRST301",
+]);
+
+export type EmailDeliveryDiagnostic = {
+  category:
+    | "environment_validation"
+    | "initial_claim_rpc"
+    | "database_processing"
+    | "unexpected_worker_failure";
+  code?: string;
+};
+
+export type EmailDeliveryDiagnosticReporter = (
+  diagnostic: EmailDeliveryDiagnostic,
+) => void;
+
+export class EmailDeliveryDatabaseError extends Error {
+  readonly code?: string;
+
+  constructor(error: unknown) {
+    super("Email delivery database operation failed.");
+    this.name = "EmailDeliveryDatabaseError";
+    const rawCode =
+      typeof error === "object" && error !== null && "code" in error
+        ? error.code
+        : undefined;
+    if (
+      typeof rawCode === "string" &&
+      safeDatabaseErrorCodes.has(rawCode)
+    ) {
+      this.code = rawCode;
+    }
+  }
+}
+
+export class EmailDeliveryWorkerError extends Error {
+  constructor(readonly diagnostic: EmailDeliveryDiagnostic) {
+    super("Email delivery claim failed.");
+    this.name = "EmailDeliveryWorkerError";
+  }
+}
+
+function reportDiagnostic(
+  reporter: EmailDeliveryDiagnosticReporter | undefined,
+  category: EmailDeliveryDiagnostic["category"],
+  error?: unknown,
+): void {
+  if (!reporter) return;
+
+  const code = error instanceof EmailDeliveryDatabaseError ? error.code : undefined;
+  reporter({
+    category,
+    ...(code ? { code } : {}),
+  });
+}
+
 export type EmailDeliveryStore = {
   claimBatch(batchSize: number): Promise<unknown>;
   findEnquiry(enquiryId: string): Promise<unknown>;
@@ -223,10 +295,22 @@ async function sendWithResend(
 async function updateState(
   action: () => Promise<boolean>,
   outcome: Exclude<DeliveryResult, "state-update-failed">,
+  reportDiagnostic: EmailDeliveryDiagnosticReporter | undefined,
 ): Promise<DeliveryResult> {
   try {
-    return (await action()) ? outcome : "state-update-failed";
-  } catch {
+    if (await action()) return outcome;
+    reportDiagnostic?.({
+      category: "database_processing",
+      code: "stale_claim",
+    });
+    return "state-update-failed";
+  } catch (error) {
+    reportDiagnostic?.({
+      category: "database_processing",
+      ...(error instanceof EmailDeliveryDatabaseError && error.code
+        ? { code: error.code }
+        : {}),
+    });
     return "state-update-failed";
   }
 }
@@ -236,16 +320,19 @@ async function processDelivery(
   store: EmailDeliveryStore,
   config: EmailDeliveryConfig,
   fetchRequest: typeof fetch,
+  diagnosticReporter: EmailDeliveryDiagnosticReporter | undefined,
 ): Promise<DeliveryResult> {
   const fail = (code: string) =>
     updateState(
       () => store.fail(delivery.delivery_id, delivery.claim_token, code),
       "failed",
+      diagnosticReporter,
     );
   const retry = (code: string) =>
     updateState(
       () => store.retry(delivery.delivery_id, delivery.claim_token, code),
       "retried",
+      diagnosticReporter,
     );
 
   if (delivery.recipient_type !== "owner" && delivery.recipient_type !== "customer") {
@@ -255,7 +342,12 @@ async function processDelivery(
   let enquiryValue: unknown;
   try {
     enquiryValue = await store.findEnquiry(delivery.enquiry_id);
-  } catch {
+  } catch (error) {
+    reportDiagnostic(
+      diagnosticReporter,
+      "database_processing",
+      error,
+    );
     return retry("enquiry_lookup_error");
   }
 
@@ -290,6 +382,7 @@ async function processDelivery(
         providerResult.providerMessageId,
       ),
     "sent",
+    diagnosticReporter,
   );
 }
 
@@ -297,23 +390,41 @@ export async function runEmailDeliveryBatch(
   store: EmailDeliveryStore,
   config: EmailDeliveryConfig,
   fetchRequest: typeof fetch = fetch,
+  diagnosticReporter?: EmailDeliveryDiagnosticReporter,
 ): Promise<EmailDeliveryBatchResult> {
   let rawClaims: unknown;
   try {
     rawClaims = await store.claimBatch(DELIVERY_BATCH_SIZE);
-  } catch {
-    throw new Error("Email delivery claim failed.");
+  } catch (error) {
+    throw new EmailDeliveryWorkerError({
+      category: "initial_claim_rpc",
+      ...(error instanceof EmailDeliveryDatabaseError && error.code
+        ? { code: error.code }
+        : {}),
+    });
   }
   const parsedClaims = z.array(claimSchema).safeParse(rawClaims);
   if (!parsedClaims.success) {
-    throw new Error("Email delivery claim response is invalid.");
+    throw new EmailDeliveryWorkerError({
+      category: "initial_claim_rpc",
+    });
   }
 
   const outcomes = await Promise.all(
     parsedClaims.data.map(async (delivery) => {
       try {
-        return await processDelivery(delivery, store, config, fetchRequest);
+        return await processDelivery(
+          delivery,
+          store,
+          config,
+          fetchRequest,
+          diagnosticReporter,
+        );
       } catch {
+        reportDiagnostic(
+          diagnosticReporter,
+          "unexpected_worker_failure",
+        );
         try {
           const updated = await store.retry(
             delivery.delivery_id,
@@ -321,7 +432,12 @@ export async function runEmailDeliveryBatch(
             "worker_error",
           );
           return updated ? "retried" : "state-update-failed";
-        } catch {
+        } catch (error) {
+          reportDiagnostic(
+            diagnosticReporter,
+            "database_processing",
+            error,
+          );
           return "state-update-failed";
         }
       }
