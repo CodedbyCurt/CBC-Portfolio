@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GA_MEASUREMENT_ID, resetAnalyticsForTests, setAnalyticsConsent, trackGenerateLead, trackPageView } from "@/lib/client/analytics";
+import {
+  ANALYTICS_CONSENT_STORAGE_KEY,
+  resetAnalyticsForTests,
+  setAnalyticsConsent,
+  trackGenerateLead,
+  trackPageView,
+} from "@/lib/client/analytics";
 import { readAnalyticsConsent, saveAnalyticsConsent } from "@/components/cookie-consent";
 
 function installBrowser() {
-  const scripts: { dataset: Record<string, string>; async?: boolean; src?: string }[] = [];
   const calls: unknown[][] = [];
+  const dataLayer: unknown[] = [];
   vi.stubGlobal("window", {
-    dataLayer: [],
+    dataLayer,
     gtag: (...args: unknown[]) => calls.push(args),
     location: { hostname: "codedbycurt.co.uk", origin: "https://codedbycurt.co.uk", pathname: "/" },
   });
@@ -14,9 +20,9 @@ function installBrowser() {
     cookie: "_ga=test; _ga_ABC=test",
     querySelector: vi.fn(() => null),
     createElement: vi.fn(() => ({ dataset: {} })),
-    head: { append: (script: { dataset: Record<string, string> }) => scripts.push(script) },
+    head: { append: vi.fn() },
   });
-  return { calls, scripts };
+  return { calls, dataLayer };
 }
 
 afterEach(() => { resetAnalyticsForTests(); vi.unstubAllGlobals(); });
@@ -32,33 +38,65 @@ describe("analytics consent", () => {
   });
 
   it("does not request or send analytics before consent or after rejection", () => {
-    const { calls, scripts } = installBrowser();
+    const { calls, dataLayer } = installBrowser();
     trackPageView("/");
     trackGenerateLead("first");
     setAnalyticsConsent("rejected");
     trackPageView("/privacy");
     trackGenerateLead("second");
-    expect(calls).toEqual([]);
-    expect(scripts).toEqual([]);
+    expect(dataLayer).toEqual([]);
+    expect(calls).toContainEqual(["consent", "default", {
+      analytics_storage: "denied",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+    }]);
+    expect(calls).toContainEqual(["consent", "update", {
+      analytics_storage: "denied",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+    }]);
   });
 
-  it("loads GA only after acceptance and sends no PII with a lead", () => {
-    const { calls, scripts } = installBrowser();
+  it("grants analytics only after acceptance and sends no PII with a lead", () => {
+    const { calls, dataLayer } = installBrowser();
     setAnalyticsConsent("accepted");
+    trackPageView("/privacy");
     trackGenerateLead("submission-key");
     trackGenerateLead("submission-key");
-    expect(scripts).toHaveLength(1);
-    expect(scripts[0].src).toBe(`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`);
-    expect(calls).toContainEqual(["event", "generate_lead"]);
-    expect(JSON.stringify(calls)).not.toContain("submission-key");
+    expect(calls).toContainEqual(["consent", "update", {
+      analytics_storage: "granted",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+    }]);
+    expect(dataLayer).toContainEqual({
+      event: "page_view",
+      page_path: "/privacy",
+      page_location: "https://codedbycurt.co.uk/",
+    });
+    expect(dataLayer.filter((event) => (event as { event?: string }).event === "generate_lead")).toHaveLength(1);
+    expect(JSON.stringify(dataLayer)).not.toContain("submission-key");
+    expect(ANALYTICS_CONSENT_STORAGE_KEY).toBe("cbc-analytics-consent");
   });
 
   it("stops future tracking and clears analytics cookies after withdrawal", () => {
-    const { calls } = installBrowser();
+    const { calls, dataLayer } = installBrowser();
     setAnalyticsConsent("accepted");
+    trackPageView("/before-withdrawal");
+    trackGenerateLead("before-withdrawal");
     setAnalyticsConsent("rejected");
+    trackPageView("/after-withdrawal");
     trackGenerateLead("submission-key");
-    expect(calls.filter((call) => call[1] === "generate_lead")).toEqual([]);
+    expect(dataLayer.filter((event) => (event as { event?: string }).event === "generate_lead")).toHaveLength(1);
+    expect(dataLayer.filter((event) => (event as { event?: string }).event === "page_view")).toHaveLength(1);
+    expect(calls).toContainEqual(["consent", "update", {
+      analytics_storage: "denied",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+    }]);
     expect(document.cookie).toContain("Max-Age=0");
   });
 });

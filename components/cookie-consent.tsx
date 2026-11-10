@@ -1,21 +1,24 @@
 "use client";
 
 import { startTransition, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import { setAnalyticsConsent, trackPageView, type AnalyticsConsent } from "@/lib/client/analytics";
+import {
+  ANALYTICS_CONSENT_STORAGE_KEY,
+  notifyAnalyticsConsent,
+  setAnalyticsConsent,
+  type AnalyticsConsent,
+} from "@/lib/client/analytics";
 
-const storageKey = "cbc-analytics-consent";
 const openEvent = "cbc-open-cookie-settings";
 
 type ConsentStorage = Pick<Storage, "getItem" | "setItem">;
 
 export function readAnalyticsConsent(storage: ConsentStorage): AnalyticsConsent | null {
-  const saved = storage.getItem(storageKey);
+  const saved = storage.getItem(ANALYTICS_CONSENT_STORAGE_KEY);
   return saved === "accepted" || saved === "rejected" ? saved : null;
 }
 
 export function saveAnalyticsConsent(storage: ConsentStorage, value: AnalyticsConsent): void {
-  storage.setItem(storageKey, value);
+  storage.setItem(ANALYTICS_CONSENT_STORAGE_KEY, value);
 }
 
 export function openCookieSettings(): void {
@@ -29,7 +32,6 @@ export function CookieConsent() {
   useEffect(() => {
     const saved = readAnalyticsConsent(window.localStorage);
     if (saved) {
-      setAnalyticsConsent(saved);
       startTransition(() => setPreference(saved));
     }
     const open = () => setSettingsOpen(true);
@@ -41,6 +43,7 @@ export function CookieConsent() {
     saveAnalyticsConsent(window.localStorage, value);
     setPreference(value);
     setAnalyticsConsent(value);
+    notifyAnalyticsConsent(value);
     setSettingsOpen(false);
   };
 
@@ -68,10 +71,4 @@ export function CookieConsent() {
       </div>
     </section>
   );
-}
-
-export function AnalyticsPageViews() {
-  const pathname = usePathname();
-  useEffect(() => trackPageView(pathname), [pathname]);
-  return null;
 }
