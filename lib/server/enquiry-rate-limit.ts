@@ -5,6 +5,7 @@ import { isIP } from "node:net";
 import { getSupabaseEnvironment } from "@/lib/server/env";
 import { getSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
+const VERCEL_CLIENT_IP_HEADER = "x-vercel-forwarded-for";
 const NETLIFY_CLIENT_IP_HEADER = "x-nf-client-connection-ip";
 const RATE_LIMIT_RPC = "consume_portfolio_enquiry_rate_limit";
 
@@ -54,7 +55,10 @@ function normalizeClientAddress(address: string): string | null {
 }
 
 export function getEnquiryClientAddress(request: Request): string | null {
-  const forwardedAddress = request.headers.get(NETLIFY_CLIENT_IP_HEADER);
+  const forwardedAddress =
+    request.headers.get(VERCEL_CLIENT_IP_HEADER) ??
+    request.headers.get(NETLIFY_CLIENT_IP_HEADER);
+
   if (!forwardedAddress) {
     return process.env.NODE_ENV === "production" ? null : "127.0.0.1";
   }
