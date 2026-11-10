@@ -1,4 +1,4 @@
-export const GTM_CONTAINER_ID = "GTM-PBSJZBSM";
+export const GTM_CONTAINER_ID = "GTM-KPDNWGRL";
 export const ANALYTICS_CONSENT_STORAGE_KEY = "cbc-analytics-consent";
 export const ANALYTICS_CONSENT_EVENT = "cbc-analytics-consent-change";
 
