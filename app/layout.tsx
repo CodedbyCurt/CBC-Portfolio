@@ -5,6 +5,7 @@ import "./globals.css";
 import { siteConfig } from "@/lib/site-config";
 import { CookieConsent } from "@/components/cookie-consent";
 import { GoogleTagManager } from "@/components/google-tag-manager";
+import { Analytics } from "@vercel/analytics/next";
 
 const archivo = localFont({ src: "./fonts/archivo-latin.woff2", variable: "--font-display", display: "swap" });
 const dmSans = localFont({ src: "./fonts/dm-sans-latin.woff2", variable: "--font-body", display: "swap" });
@@ -26,5 +27,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return <html lang="en" className={`${archivo.variable} ${dmSans.variable} ${plexMono.variable}`}><body><GoogleTagManager /><a className="skip-link" href="#main-content">Skip to content</a>{children}<CookieConsent /></body></html>;
+  return <html lang="en" className={`${archivo.variable} ${dmSans.variable} ${plexMono.variable}`}><body><GoogleTagManager /><a className="skip-link" href="#main-content">Skip to content</a>{children}<CookieConsent /><Analytics /></body></html>;
 }
