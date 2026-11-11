@@ -27,5 +27,8 @@ describe("contact form accessibility", () => {
     expect(emailInput).not.toContain("required");
     expect(markup).toContain("Email address");
     expect(markup).toContain("Your trade, service area and the work you want more of");
+    expect(markup.indexOf("Getting a website built with me is straightforward.")).toBeGreaterThan(
+      markup.indexOf("</form>"),
+    );
   });
 });

@@ -9,6 +9,11 @@ describe("portfolio text reveals", () => {
     const markup = renderToStaticMarkup(createElement(HomePage));
 
     expect(markup).toContain("Selected work / Three live projects");
+    expect(markup).toContain('aria-label="Selected work" class="h-[360vh] bg-ink text-paper lg:h-[480vh]"');
+    expect(markup).toContain("w-[min(90vw,620px)]");
+    expect(markup).toContain(
+      'sizes="(prefers-reduced-motion: reduce) and (max-width: 911px) 68vw, (max-width: 688px) 90vw, 620px"',
+    );
     expect(markup).toContain("Three live websites built for tradespeople and local businesses.");
     expect(markup).toContain("Sites built solo this year");
     expect(markup).toContain("40+");

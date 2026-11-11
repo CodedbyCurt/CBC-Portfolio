@@ -29,12 +29,12 @@ describe("websites for tradespeople page", () => {
         "Professional websites for UK tradespeople. Showcase your work, explain your services and make it easier for customers to contact you. Clear pricing from Coded by Curt.",
       alternates: {
         canonical: new URL(
-          "https://codedbycurt.co.uk/websites-for-tradespeople",
+          "https://www.codedbycurt.co.uk/websites-for-tradespeople",
         ),
       },
       openGraph: {
         title: "Website Design for UK Tradespeople | Coded by Curt",
-        url: new URL("https://codedbycurt.co.uk/websites-for-tradespeople"),
+        url: new URL("https://www.codedbycurt.co.uk/websites-for-tradespeople"),
       },
       twitter: {
         card: "summary_large_image",

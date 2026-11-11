@@ -98,7 +98,9 @@ describe("homepage service and process copy", () => {
     expect(markup).toContain("Agree your website");
     expect(markup).toContain("Review your website");
     expect(markup).toContain("Get ready to go live");
-    expect(markup).toContain("text-lg leading-8 text-paper/80 sm:text-xl sm:leading-9");
+    expect(markup).toContain(
+      "text-lg leading-8 text-ink/75 sm:text-xl sm:leading-9 sm:text-paper/80",
+    );
     expect(markup).not.toContain('class="font-mono text-sm text-signal">01</span>');
     expect(markup).not.toContain("text-6xl font-bold tracking-[-.08em] text-paper/10");
   });

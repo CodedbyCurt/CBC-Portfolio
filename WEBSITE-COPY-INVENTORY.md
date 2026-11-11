@@ -559,7 +559,7 @@ This document captures the existing customer-facing wording currently used acros
 ### Site config values
 - Business name: "Coded by Curt"
 - Short name: "CodedbyCurt"
-- URL: "https://codedbycurt.co.uk"
+- URL: "https://www.codedbycurt.co.uk"
 - Email: "curt@codedbycurt.co.uk"
 - Description: "Website design and development for tradespeople and small businesses across the United Kingdom, including plumbers, electricians, builders and other trades."
 - Service area: "United Kingdom"

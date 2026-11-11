@@ -6,11 +6,30 @@ import { CookieSettingsLink } from "@/components/privacy-cookie-settings-link";
 
 const title = "Privacy Policy";
 const description = "How Coded by Curt collects, uses and retains personal information and optional analytics data.";
+const pageUrl = new URL("/privacy", siteConfig.url);
+const socialImage = new URL("/opengraph-image", siteConfig.url);
+const socialTitle = `${title} | ${siteConfig.businessName}`;
+const socialImageAlt = "Coded by Curt — websites for UK tradespeople and small businesses";
 
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: new URL("/privacy", siteConfig.url) },
+  alternates: { canonical: pageUrl },
+  openGraph: {
+    type: "website",
+    locale: "en_GB",
+    url: pageUrl,
+    siteName: siteConfig.businessName,
+    title: socialTitle,
+    description,
+    images: [{ url: socialImage, alt: socialImageAlt }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: socialTitle,
+    description,
+    images: [{ url: socialImage, alt: socialImageAlt }],
+  },
   robots: { index: true, follow: true },
 };
 

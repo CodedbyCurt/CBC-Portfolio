@@ -56,27 +56,23 @@ describe("homepage pricing section", () => {
     );
   });
 
-  it("describes individual digital services and separates advertising and printing costs", () => {
+  it("shows individual digital service titles without prices or descriptions", () => {
     const markup = renderToStaticMarkup(createElement(HomePage));
     const pricing = markup.slice(
       markup.indexOf('<section id="pricing"'),
       markup.indexOf('<section id="faq"'),
     );
+    const addOnListStart = pricing.indexOf('<ul class="grid gap-x-8');
+    const addOnListEnd = pricing.indexOf("</ul>", addOnListStart);
+    const addOnList = pricing.slice(addOnListStart, addOnListEnd);
 
-    expect(pricing).toContain("Facebook and Instagram setup");
-    expect(pricing).toContain("Google Business Profile setup");
-    expect(pricing).toContain("Google Search and Google Maps");
-    expect(pricing).toContain("Meta Ads setup");
-    expect(pricing).toContain("Ad spend and ongoing management are separate.");
-    expect(pricing).toContain("QR-code Google review materials");
-    expect(pricing).toContain("Printing costs extra.");
-    expect(pricing).toContain("Business card design");
-    expect(pricing).toContain("Business card design featuring your Google review QR code");
-    expect(pricing).toContain("including a print-ready design file. Physical printing is an additional cost.");
-    expect(pricing.match(/class="shrink-0 font-mono text-sm font-bold">£35<\/p>/g)).toHaveLength(2);
-    expect(pricing.match(/class="shrink-0 font-mono text-sm font-bold">£70<\/p>/g)).toHaveLength(1);
-    expect(pricing.match(/class="shrink-0 font-mono text-sm font-bold">£10<\/p>/g)).toHaveLength(1);
-    expect(pricing.match(/class="shrink-0 font-mono text-sm font-bold">£30<\/p>/g)).toHaveLength(1);
+    expect(addOnList).toContain("Facebook and Instagram setup");
+    expect(addOnList).toContain("Google Business Profile setup");
+    expect(addOnList).toContain("Meta Ads setup");
+    expect(addOnList).toContain("QR-code Google review materials");
+    expect(addOnList).toContain("Business card design");
+    expect(addOnList.match(/class="border-b border-ink\/20 py-4"/g)).toHaveLength(5);
+    expect(addOnList).not.toMatch(/£\d|Google Search and Google Maps|Ad spend and ongoing management|Printing costs extra|print-ready design file/);
   });
 
   it("shows accurate package deals, recurring care, bundles, and enquiry links", () => {
@@ -144,7 +140,7 @@ describe("homepage pricing section", () => {
       pricing.indexOf("05 / Website + digital presence"),
     );
     expect(pricing).toContain('<h4 class="eyebrow text-paper">Not sure what you need?</h4>');
-    expect(pricing).toContain("mt-4 text-sm leading-6 text-paper/75");
+    expect(pricing).toContain("mt-2 max-w-2xl text-sm leading-5 text-paper/75");
     expect(pricing).toContain("tracking-wider text-paper underline decoration-signal");
     expect(pricing).toContain(
       "Tell me a little about your business and I&#x27;ll help you work out which services would be useful.",

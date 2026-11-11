@@ -14,7 +14,7 @@ function installBrowser() {
   vi.stubGlobal("window", {
     dataLayer,
     gtag: (...args: unknown[]) => calls.push(args),
-    location: { hostname: "codedbycurt.co.uk", origin: "https://codedbycurt.co.uk", pathname: "/" },
+    location: { hostname: "www.codedbycurt.co.uk", origin: "https://www.codedbycurt.co.uk", pathname: "/" },
   });
   vi.stubGlobal("document", {
     cookie: "_ga=test; _ga_ABC=test",
@@ -74,7 +74,7 @@ describe("analytics consent", () => {
     expect(dataLayer).toContainEqual({
       event: "page_view",
       page_path: "/privacy",
-      page_location: "https://codedbycurt.co.uk/",
+      page_location: "https://www.codedbycurt.co.uk/",
     });
     expect(dataLayer.filter((event) => (event as { event?: string }).event === "generate_lead")).toHaveLength(1);
     expect(JSON.stringify(dataLayer)).not.toContain("submission-key");

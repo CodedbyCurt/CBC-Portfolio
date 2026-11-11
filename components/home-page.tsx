@@ -568,7 +568,7 @@ function ProcessPeelCard({
   return (
     <motion.li
       data-process-card={step.number}
-      className="absolute left-1/2 top-1/2 flex h-[min(62vh,500px)] min-h-[320px] w-[min(calc(100vw-2rem),780px)] -translate-x-1/2 -translate-y-1/2 flex-col justify-between overflow-hidden border border-paper/40 bg-ink p-6 text-paper shadow-[0_24px_70px_rgba(0,0,0,.4)] sm:h-[min(68vh,620px)] sm:min-h-[440px] sm:p-10 lg:p-14"
+      className="absolute left-1/2 top-1/2 flex h-[min(62vh,500px)] min-h-[320px] w-[min(calc(100vw-2rem),780px)] -translate-x-1/2 -translate-y-1/2 flex-col justify-between overflow-hidden border border-ink/40 bg-paper p-6 text-ink shadow-[0_24px_70px_rgba(0,0,0,.4)] sm:border-paper/40 sm:bg-ink sm:p-10 sm:text-paper lg:p-14"
       style={{
         y,
         x,
@@ -581,12 +581,12 @@ function ProcessPeelCard({
       }}
     >
       <motion.div style={{ opacity: contentOpacity }}>
-        <h3 className="display max-w-3xl text-4xl font-black leading-[.9] tracking-[-.065em] text-paper sm:text-6xl lg:text-7xl">
+        <h3 className="display max-w-3xl text-4xl font-black leading-[.9] tracking-[-.065em] text-ink sm:text-6xl sm:text-paper lg:text-7xl">
           {step.title}
         </h3>
       </motion.div>
       <motion.p
-        className="max-w-2xl text-lg leading-8 text-paper/80 sm:text-xl sm:leading-9"
+        className="max-w-2xl text-lg leading-8 text-ink/75 sm:text-xl sm:leading-9 sm:text-paper/80"
         style={{ opacity: contentOpacity }}
       >
         {step.copy}
@@ -998,36 +998,11 @@ function Process() {
 
 function Pricing() {
   const addOns = [
-    {
-      name: "Facebook and Instagram setup",
-      price: "£35",
-      description:
-        "Set up a Facebook business page and an Instagram professional account for your trade.",
-    },
-    {
-      name: "Google Business Profile setup",
-      price: "£35",
-      description:
-        "Help customers find your business on Google Search and Google Maps with a properly set-up profile.",
-    },
-    {
-      name: "Meta Ads setup",
-      price: "£70",
-      description:
-        "Configure your advertising accounts and set up an initial campaign. Ad spend and ongoing management are separate.",
-    },
-    {
-      name: "QR-code Google review materials",
-      price: "£10",
-      description:
-        "Get a QR code and review-request design customers can scan to reach your Google review link. Printing costs extra.",
-    },
-    {
-      name: "Business card design",
-      price: "£30",
-      description:
-        "Business card design featuring your Google review QR code, including a print-ready design file. Physical printing is an additional cost.",
-    },
+    "Facebook and Instagram setup",
+    "Google Business Profile setup",
+    "Meta Ads setup",
+    "QR-code Google review materials",
+    "Business card design",
   ];
 
   const packages = [
@@ -1304,28 +1279,26 @@ function Pricing() {
             Already have a website, or want a little more help getting your business online? Add the
             services that make sense for you.
           </p>
-          <div className="mt-6 grid gap-px border border-ink bg-ink sm:grid-cols-2 lg:grid-cols-3">
-            {addOns.map((service) => (
-              <article key={service.name} className="flex flex-col bg-paper p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <h4 className="font-bold leading-6">{service.name}</h4>
-                  <p className="shrink-0 font-mono text-sm font-bold">{service.price}</p>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-ink/70">{service.description}</p>
-              </article>
-            ))}
+          <div className="mt-6 overflow-hidden border border-ink bg-paper">
+            <ul className="grid gap-x-8 px-5 sm:grid-cols-2 sm:px-7 lg:grid-cols-3">
+              {addOns.map((service) => (
+                <li key={service} className="border-b border-ink/20 py-4">
+                  <h4 className="font-bold leading-5">{service}</h4>
+                </li>
+              ))}
+            </ul>
             <a
               href="#contact"
-              className="group flex min-h-full flex-col justify-between bg-ink p-5 text-paper transition-colors hover:bg-moss focus-visible:outline-paper sm:p-6"
+              className="group flex flex-col gap-4 bg-ink p-5 text-paper transition-colors hover:bg-moss focus-visible:outline-paper sm:flex-row sm:items-center sm:justify-between sm:px-7"
             >
               <div>
                 <h4 className="eyebrow text-paper">Not sure what you need?</h4>
-                <p className="mt-4 text-sm leading-6 text-paper/75">
+                <p className="mt-2 max-w-2xl text-sm leading-5 text-paper/75">
                   Tell me a little about your business and I&apos;ll help you work out which
                   services would be useful.
                 </p>
               </div>
-              <span className="mt-8 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-paper underline decoration-signal decoration-2 underline-offset-4">
+              <span className="inline-flex shrink-0 items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-paper underline decoration-signal decoration-2 underline-offset-4">
                 Let&apos;s talk{" "}
                 <ArrowRight
                   className="size-4 motion-safe:transition-transform motion-safe:duration-200 motion-safe:group-hover:translate-x-1"
@@ -1334,10 +1307,6 @@ function Pricing() {
               </span>
             </a>
           </div>
-          <p className="mt-3 text-xs leading-5 text-ink/65">
-            One-off setup prices. Advertising spend, printing and paid third-party services are
-            not included.
-          </p>
         </div>
 
         <div className="mt-16 grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
@@ -1654,22 +1623,6 @@ export function Contact() {
           <h2 className="display mt-6 text-5xl font-black leading-[.86] tracking-[-.08em] sm:text-7xl">
             LET&apos;S GET YOUR BUSINESS ONLINE.
           </h2>
-          <p className="mt-6 max-w-md text-lg leading-7">
-            Getting a website built with me is straightforward. Simply tell me:
-          </p>
-          <ul className="mt-4 max-w-md list-disc space-y-2 pl-5 text-lg leading-7">
-            <li>What trade or industry you&apos;re in.</li>
-            <li>What services you offer and the work you do.</li>
-            <li>
-              What you&apos;d like your website to achieve – whether that&apos;s getting more
-              enquiries, showcasing your work, helping customers find you or making it easier for
-              people to get in touch.
-            </li>
-          </ul>
-          <p className="mt-4 max-w-md text-lg leading-7">
-            I&apos;ll look at what your business needs and come back with a clear recommendation and
-            price. There&apos;s no pressure to go ahead.
-          </p>
           <div className="mt-8 space-y-3 font-mono text-sm font-bold">
             {hasConfiguredPhone && (
               <a
@@ -1699,120 +1652,140 @@ export function Contact() {
             )}
           </div>
         </div>
-        <form className="border border-ink bg-paper p-5 sm:p-8" onSubmit={submit}>
-          <p className="eyebrow mb-6">A few details are all I need to get started.</p>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className="eyebrow grid gap-2">
-              <span className="flex min-h-[2.4em] flex-col justify-between">
-                <span>Your name</span>
+        <div>
+          <form className="border border-ink bg-paper p-5 sm:p-8" onSubmit={submit}>
+            <p className="eyebrow mb-6">A few details are all I need to get started.</p>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <label className="eyebrow grid gap-2">
+                <span className="flex min-h-[2.4em] flex-col justify-between">
+                  <span>Your name</span>
+                  <span className="font-sans text-xs font-normal normal-case tracking-normal">
+                    Required
+                  </span>
+                </span>
+                <input
+                  required
+                  name="name"
+                  autoComplete="name"
+                  aria-invalid={Boolean(fieldError("name"))}
+                  aria-describedby={fieldError("name") ? "contact-name-error" : undefined}
+                  onChange={onFieldChange("name")}
+                  className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
+                />
+                {fieldError("name") && (
+                  <span id="contact-name-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
+                    {fieldError("name")}
+                  </span>
+                )}
+              </label>
+              <label className="eyebrow grid gap-2">
+                <span className="flex min-h-[2.4em] flex-col justify-between">
+                  <span>Phone number</span>
+                  <span className="font-sans text-xs font-normal normal-case tracking-normal">
+                    Optional if you provide an email address.
+                  </span>
+                </span>
+                <input
+                  name="phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  aria-invalid={Boolean(fieldError("phone"))}
+                  aria-describedby={fieldError("phone") ? "contact-phone-error" : undefined}
+                  onChange={onFieldChange("phone")}
+                  className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
+                />
+                {fieldError("phone") && (
+                  <span id="contact-phone-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
+                    {fieldError("phone")}
+                  </span>
+                )}
+              </label>
+              <label className="eyebrow grid gap-2 sm:col-span-2">
+                <span>Email address</span>
                 <span className="font-sans text-xs font-normal normal-case tracking-normal">
-                  Required
+                  Optional if you provide a phone number.
                 </span>
-              </span>
-              <input
-                required
-                name="name"
-                autoComplete="name"
-                aria-invalid={Boolean(fieldError("name"))}
-                aria-describedby={fieldError("name") ? "contact-name-error" : undefined}
-                onChange={onFieldChange("name")}
-                className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
-              />
-              {fieldError("name") && (
-                <span id="contact-name-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
-                  {fieldError("name")}
-                </span>
+                <input
+                  name="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  spellCheck={false}
+                  aria-invalid={Boolean(fieldError("email"))}
+                  aria-describedby={fieldError("email") ? "contact-email-error" : undefined}
+                  onChange={onFieldChange("email")}
+                  className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
+                />
+                {fieldError("email") && (
+                  <span id="contact-email-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
+                    {fieldError("email")}
+                  </span>
+                )}
+              </label>
+              <label className="eyebrow grid gap-2 sm:col-span-2">
+                Your trade, service area and the work you want more of
+                <textarea
+                  required
+                  name="message"
+                  rows={4}
+                  aria-invalid={Boolean(fieldError("message"))}
+                  aria-describedby={fieldError("message") ? "contact-message-error" : undefined}
+                  onChange={onFieldChange("message")}
+                  className="resize-y border border-ink bg-paper p-3 font-sans text-base normal-case tracking-normal"
+                  placeholder="For example: plumbing in Leeds, mainly bathroom installs."
+                />
+                {fieldError("message") && (
+                  <span id="contact-message-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
+                    {fieldError("message")}
+                  </span>
+                )}
+              </label>
+            </div>
+            <button
+              className="button-primary mt-6 w-full"
+              type="submit"
+              disabled={formState.phase === "submitting"}
+              aria-busy={formState.phase === "submitting"}
+            >
+              {formState.phase === "submitting" ? "Sending…" : "Get my website quote"}
+              {formState.phase === "submitting" ? (
+                <span
+                  className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
+                  aria-hidden="true"
+                />
+              ) : (
+                <ArrowRight className="size-4" aria-hidden="true" />
               )}
-            </label>
-            <label className="eyebrow grid gap-2">
-              <span className="flex min-h-[2.4em] flex-col justify-between">
-                <span>Phone number</span>
-                <span className="font-sans text-xs font-normal normal-case tracking-normal">
-                  Optional if you provide an email address.
-                </span>
-              </span>
-              <input
-                name="phone"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                aria-invalid={Boolean(fieldError("phone"))}
-                aria-describedby={fieldError("phone") ? "contact-phone-error" : undefined}
-                onChange={onFieldChange("phone")}
-                className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
-              />
-              {fieldError("phone") && (
-                <span id="contact-phone-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
-                  {fieldError("phone")}
-                </span>
-              )}
-            </label>
-            <label className="eyebrow grid gap-2 sm:col-span-2">
-              <span>Email address</span>
-              <span className="font-sans text-xs font-normal normal-case tracking-normal">
-                Optional if you provide a phone number.
-              </span>
-              <input
-                name="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                spellCheck={false}
-                aria-invalid={Boolean(fieldError("email"))}
-                aria-describedby={fieldError("email") ? "contact-email-error" : undefined}
-                onChange={onFieldChange("email")}
-                className="h-12 border border-ink bg-paper px-3 font-sans text-base normal-case tracking-normal"
-              />
-              {fieldError("email") && (
-                <span id="contact-email-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
-                  {fieldError("email")}
-                </span>
-              )}
-            </label>
-            <label className="eyebrow grid gap-2 sm:col-span-2">
-              Your trade, service area and the work you want more of
-              <textarea
-                required
-                name="message"
-                rows={4}
-                aria-invalid={Boolean(fieldError("message"))}
-                aria-describedby={fieldError("message") ? "contact-message-error" : undefined}
-                onChange={onFieldChange("message")}
-                className="resize-y border border-ink bg-paper p-3 font-sans text-base normal-case tracking-normal"
-                placeholder="For example: plumbing in Leeds, mainly bathroom installs."
-              />
-              {fieldError("message") && (
-                <span id="contact-message-error" className="font-sans text-sm normal-case tracking-normal" role="alert">
-                  {fieldError("message")}
-                </span>
-              )}
-            </label>
+            </button>
+            <p
+              className="mt-4 min-h-5 text-sm leading-6"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {formState.message}
+            </p>
+          </form>
+          <div className="mt-8 border-t border-ink/40 pt-6">
+            <p className="max-w-md text-lg leading-7">
+              Getting a website built with me is straightforward. Simply tell me:
+            </p>
+            <ul className="mt-4 max-w-md list-disc space-y-2 pl-5 text-lg leading-7">
+              <li>What trade or industry you&apos;re in.</li>
+              <li>What services you offer and the work you do.</li>
+              <li>
+                What you&apos;d like your website to achieve – whether that&apos;s getting more
+                enquiries, showcasing your work, helping customers find you or making it easier for
+                people to get in touch.
+              </li>
+            </ul>
+            <p className="mt-4 max-w-md text-lg leading-7">
+              I&apos;ll look at what your business needs and come back with a clear recommendation and
+              price. There&apos;s no pressure to go ahead.
+            </p>
           </div>
-          <button
-            className="button-primary mt-6 w-full"
-            type="submit"
-            disabled={formState.phase === "submitting"}
-            aria-busy={formState.phase === "submitting"}
-          >
-            {formState.phase === "submitting" ? "Sending…" : "Get my website quote"}
-            {formState.phase === "submitting" ? (
-              <span
-                className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
-                aria-hidden="true"
-              />
-            ) : (
-              <ArrowRight className="size-4" aria-hidden="true" />
-            )}
-          </button>
-          <p
-            className="mt-4 min-h-5 text-sm leading-6"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {formState.message}
-          </p>
-        </form>
+        </div>
       </div>
     </section>
   );
