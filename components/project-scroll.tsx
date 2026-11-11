@@ -34,7 +34,7 @@ export function ProjectScroll() {
   const reduced = useReducedMotion();
   return <section ref={ref} aria-label="Selected work" className="hidden h-[480vh] bg-ink text-paper lg:block">
     <div className="sticky top-20 h-[calc(100vh-5rem)] overflow-hidden">
-    <div className="container relative h-full"><div className="absolute left-[4vw] top-8 flex items-center gap-3 eyebrow"><span className="inline-flex size-6 items-center justify-center border border-paper/60">W</span> A live project &amp; two concepts</div><p className="absolute bottom-9 left-[4vw] flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.14em] text-paper/70"><ArrowDown className="size-3" /> Scroll to explore the work</p>
+    <div className="container relative h-full"><div className="absolute left-[4vw] top-8 flex items-center gap-3 eyebrow"><span className="inline-flex size-6 items-center justify-center border border-paper/60">W</span> Three live projects</div><p className="absolute bottom-9 left-[4vw] flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.14em] text-paper/70"><ArrowDown className="size-3" /> Scroll to explore the work</p>
         {siteConfig.projects.map((project, index) => reduced ? <div key={project.name} className="absolute left-1/2 top-[19vh] w-[min(68vw,620px)] -translate-x-1/2" style={{ transform: `translate(calc(-50% + ${index === 0 ? 0 : index % 2 ? 64 : -48}px), ${index * 36}px) rotate(${-1.8 + index * 2.2}deg)`, zIndex: 10 - index }}><BrowserPreview project={project} compact /></div> : <PeelCard key={project.name} project={project} index={index} total={siteConfig.projects.length} progress={smoothProgress} />)}
       </div>
     </div>

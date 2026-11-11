@@ -7,17 +7,19 @@ describe("homepage hero typewriter fallback", () => {
   it("renders the original headline and a readable static phrase before JavaScript", () => {
     const markup = renderToStaticMarkup(createElement(Hero));
 
-    expect(markup).toContain('aria-label="LOOK THE PART BEFORE THEY CALL."');
+    expect(markup).toContain('aria-label="LOOK THE PART. MAKE IT EASY TO CHOOSE YOU."');
     expect(markup).toContain('<span class="hero-kinetic-line" aria-hidden="true">');
     expect(markup).toContain('<span class="hero-kinetic-line text-signal" aria-hidden="true">');
     expect(markup).toContain(
       '<span class="kinetic-char"><span class="kinetic-char-sizer" aria-hidden="true">L</span><span class="kinetic-char-glyph">L</span></span>',
     );
-    expect(markup).toContain("A CLEAR STARTING POINT. A PRICE AGREED UP FRONT.");
+    expect(markup).toContain(
+      '<span class="invisible col-start-1 row-start-1">LOOK THE PART.</span>',
+    );
     expect(markup).toContain('poster="/portfoliohero-poster.avif"');
     expect(markup).toContain('preload="none"');
     expect(markup).not.toContain("<source src=\"/portfoliohero.mp4\"");
-    expect(markup).toContain('<span class="sr-only">SHOWCASE YOUR WORK.</span>');
+    expect(markup).toContain('<span class="sr-only">LOOK THE PART.</span>');
     expect(markup).toContain('aria-hidden="true"');
     expect(markup).not.toContain('aria-live="');
   });

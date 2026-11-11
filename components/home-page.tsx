@@ -1,7 +1,15 @@
 "use client";
 
 import { Fragment, type FormEvent, type ReactNode, useEffect, useReducer, useRef, useState } from "react";
-import { motion, useInView, useReducedMotion } from "motion/react";
+import {
+  motion,
+  useInView,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+  type MotionValue,
+} from "motion/react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check, ChevronDown, Menu, Phone, X } from "lucide-react";
 import Image from "next/image";
@@ -33,10 +41,10 @@ const hasConfiguredPhone = Boolean(siteConfig.phoneHref);
 const hasConfiguredEmail = Boolean(siteConfig.email);
 const hasConfiguredWhatsApp = Boolean(siteConfig.whatsappHref);
 const heroTypewriterPhrases = [
-  "SHOWCASE YOUR WORK.",
-  "BUILD CUSTOMER TRUST.",
-  "MAKE ENQUIRIES EASIER.",
-  "A CLEAR STARTING POINT. A PRICE AGREED UP FRONT.",
+  "LOOK THE PART.",
+  "MAKE IT EASY TO CHOOSE YOU.",
+  "PROFESSIONAL WEBSITES.",
+  "BUILT AROUND YOUR BUSINESS.",
 ] as const;
 
 function KineticWord({
@@ -282,25 +290,25 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
           >
             <span className="size-2 bg-signal" />
-            Websites for the people who keep things working
+            Professional websites for tradespeople and small businesses.
           </motion.p>
           <motion.h1
             className="display max-w-3xl text-[clamp(3.5rem,7.3vw,7rem)] font-black leading-[.86] tracking-[-.08em]"
-            aria-label="LOOK THE PART BEFORE THEY CALL."
+            aria-label="LOOK THE PART. MAKE IT EASY TO CHOOSE YOU."
             initial={false}
             animate={{ opacity: 1, y: 0 }}
           >
-            {renderKineticLine("LOOK THE PART")}
+            {renderKineticLine("LOOK THE PART.")}
             <br />
-            {renderKineticLine("BEFORE THEY")}
+            {renderKineticLine("MAKE IT EASY")}
             <br />
-            {renderKineticLine("CALL.", true)}
+            {renderKineticLine("TO CHOOSE YOU.", true)}
           </motion.h1>
           <p className="hero-typewriter display mt-5 text-2xl font-bold leading-tight tracking-[-.045em] text-signal sm:text-3xl">
             <span className="sr-only">{heroTypewriterPhrases[0]}</span>
             <span className="grid" aria-hidden="true">
               <span className="invisible col-start-1 row-start-1">
-                A CLEAR STARTING POINT. A PRICE AGREED UP FRONT.
+                LOOK THE PART.
               </span>
               <span className="col-start-1 row-start-1">
                 {reduced === true ? heroTypewriterPhrases[0] : typewriterText}
@@ -313,9 +321,9 @@ export function Hero() {
             initial={false}
             animate={{ opacity: 1, y: 0 }}
           >
-            When a customer hears your name or looks for a local tradesperson, give them a clear
-            place to see what you do, where you work and the jobs you’re proud of. Then make it
-            straightforward to call or ask for a quote.
+            When someone hears your name, sees your work or searches for a tradesperson, your
+            website gives them somewhere to find out more. Show what you do, build confidence in
+            your business and make getting in touch straightforward.
           </motion.p>
           <motion.div
             className="mt-7 flex flex-wrap gap-3"
@@ -323,17 +331,17 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
           >
             <a href="#contact" className="button-primary">
-              Get a straight-talking quote <ArrowRight className="size-4" />
+              Get a website quote <ArrowRight className="size-4" />
             </a>
             <a
               href="#work"
               className="button-secondary !border-paper/70 !text-paper hover:!bg-paper hover:!text-ink"
             >
-              See selected work <span aria-hidden="true">↓</span>
+              See the work <span aria-hidden="true">↓</span>
             </a>
           </motion.div>
           <p className="mt-6 font-mono text-[10px] uppercase tracking-[.14em] text-paper/70 sm:text-xs">
-            No ranking promises. Just a more professional place to send customers.
+            No complicated process. No confusing web jargon. Just a professional website built around your business.
           </p>
         </div>
       </div>
@@ -385,7 +393,7 @@ function ProjectSection({ project }: { project: Project }) {
       : project.tone === "orange"
         ? "bg-signal"
         : "bg-clay";
-  const isLiveProject = project.location === "Live project";
+  const isLiveProject = project.location.startsWith("Live project");
 
   return (
     <article className={`${background} border-b border-ink/30 py-16 lg:py-24`}>
@@ -429,7 +437,7 @@ function ProjectSection({ project }: { project: Project }) {
               </li>
             ))}
           </ul>
-          {isLiveProject ? (
+          {project.liveUrl ? (
             <a
               href={project.liveUrl}
               target="_blank"
@@ -439,14 +447,14 @@ function ProjectSection({ project }: { project: Project }) {
             >
               Visit the live website <ArrowUpRight className="size-4" aria-hidden="true" />
             </a>
-          ) : (
+          ) : !isLiveProject ? (
             <a
               href="#contact"
               className="mt-7 inline-flex items-center gap-2 border-b border-current pb-1 font-mono text-xs font-bold uppercase tracking-wider"
             >
               Discuss a site like this <ArrowRight className="size-4" aria-hidden="true" />
             </a>
-          )}
+          ) : null}
         </div>
       </div>
     </article>
@@ -481,138 +489,456 @@ function Marquee() {
   );
 }
 
+type WebsiteBenefit = {
+  number: string;
+  label: string;
+  title: string;
+  copy: string;
+  style: string;
+};
+
+type WebsiteStep = {
+  number: string;
+  title: string;
+  copy: string;
+};
+
+function ProcessPeelCard({
+  step,
+  index,
+  total,
+  progress,
+}: {
+  step: WebsiteStep;
+  index: number;
+  total: number;
+  progress: MotionValue<number>;
+}) {
+  const isLast = index === total - 1;
+  const settleAt = index === 0 ? 0.001 : index * 0.2;
+  const peelStart = 0.2 + index * 0.22;
+  const peelEnd = peelStart + 0.18;
+  const direction = index % 2 === 0 ? -1 : 1;
+  const initialOffset = `${index * 3.2}vh`;
+  const initialX = index === 0 ? "0vw" : index % 2 ? "3vw" : "-3vw";
+  const rotation = -1.4 + index;
+  const range = isLast
+    ? [0, settleAt, 1]
+    : [0, settleAt, peelStart, peelEnd, 1];
+
+  const y = useTransform(
+    progress,
+    range,
+    isLast
+      ? [initialOffset, "0vh", "0vh"]
+      : [initialOffset, "0vh", "0vh", "116vh", "116vh"],
+  );
+  const x = useTransform(
+    progress,
+    range,
+    isLast
+      ? [initialX, "0vw", "0vw"]
+      : [initialX, "0vw", "0vw", `${direction * 17}vw`, `${direction * 17}vw`],
+  );
+  const rotate = useTransform(
+    progress,
+    range,
+    isLast
+      ? [`${rotation}deg`, "0deg", "0deg"]
+      : [`${rotation}deg`, "0deg", "0deg", `${direction * 10}deg`, `${direction * 10}deg`],
+  );
+  const scale = useTransform(
+    progress,
+    range,
+    isLast
+      ? [1 - index * 0.04, 1, 1]
+      : [1 - index * 0.04, 1, 1, 0.9, 0.9],
+  );
+  const opacity = useTransform(
+    progress,
+    isLast ? [0, settleAt, 1] : [0, peelEnd - 0.04, peelEnd, 1],
+    isLast ? [1, 1, 1] : [1, 1, 0, 0],
+  );
+  const contentOpacity = useTransform(
+    progress,
+    index === 0 ? [0, peelEnd - 0.04, peelEnd, 1] : [0, settleAt - 0.04, settleAt, 1],
+    index === 0 ? [1, 1, 0, 0] : [0, 0, 1, 1],
+  );
+
+  return (
+    <motion.li
+      data-process-card={step.number}
+      className="absolute left-1/2 top-1/2 flex h-[min(62vh,500px)] min-h-[320px] w-[min(calc(100vw-2rem),780px)] -translate-x-1/2 -translate-y-1/2 flex-col justify-between overflow-hidden border border-paper/40 bg-ink p-6 text-paper shadow-[0_24px_70px_rgba(0,0,0,.4)] sm:h-[min(68vh,620px)] sm:min-h-[440px] sm:p-10 lg:p-14"
+      style={{
+        y,
+        x,
+        scale,
+        opacity,
+        rotate,
+        transformOrigin: "50% 0%",
+        willChange: "transform, opacity",
+        zIndex: total - index,
+      }}
+    >
+      <motion.div style={{ opacity: contentOpacity }}>
+        <h3 className="display max-w-3xl text-4xl font-black leading-[.9] tracking-[-.065em] text-paper sm:text-6xl lg:text-7xl">
+          {step.title}
+        </h3>
+      </motion.div>
+      <motion.p
+        className="max-w-2xl text-lg leading-8 text-paper/80 sm:text-xl sm:leading-9"
+        style={{ opacity: contentOpacity }}
+      >
+        {step.copy}
+      </motion.p>
+    </motion.li>
+  );
+}
+
+function BenefitPeelCard({
+  benefit,
+  index,
+  total,
+  progress,
+}: {
+  benefit: WebsiteBenefit;
+  index: number;
+  total: number;
+  progress: MotionValue<number>;
+}) {
+  const isLast = index === total - 1;
+  const settleAt = index === 0 ? 0.001 : index * 0.23 - 0.01;
+  const peelStart = 0.24 + index * 0.22;
+  const peelEnd = peelStart + 0.18;
+  const initialOffset = `${index * 3.5}vh`;
+  const direction = index % 2 === 0 ? -1 : 1;
+  const initialX = index === 0 ? "0vw" : index % 2 ? "3vw" : "-3vw";
+  const baseRotation = -1.6 + index * 1.1;
+  const range = isLast
+    ? [0, settleAt, 1]
+    : [0, settleAt, peelStart, peelEnd, 1];
+
+  const y = useTransform(
+    progress,
+    range,
+    isLast
+      ? [initialOffset, "0vh", "0vh"]
+      : [initialOffset, "0vh", "0vh", "116vh", "116vh"],
+  );
+  const x = useTransform(
+    progress,
+    range,
+    isLast
+      ? [initialX, "0vw", "0vw"]
+      : [initialX, "0vw", "0vw", `${direction * 17}vw`, `${direction * 17}vw`],
+  );
+  const rotate = useTransform(
+    progress,
+    range,
+    isLast
+      ? [`${baseRotation}deg`, "0deg", "0deg"]
+      : [`${baseRotation}deg`, "0deg", "0deg", `${direction * 11}deg`, `${direction * 11}deg`],
+  );
+  const scale = useTransform(
+    progress,
+    range,
+    isLast
+      ? [1 - index * 0.04, 1, 1]
+      : [1 - index * 0.04, 1, 1, 0.9, 0.9],
+  );
+  const opacity = useTransform(
+    progress,
+    isLast
+      ? index === 0
+        ? [0, 0.02, 0.12, 1]
+        : [0, settleAt, 1]
+      : index === 0
+        ? [0, 0.02, 0.12, peelEnd - 0.04, peelEnd, 1]
+        : [0, peelEnd - 0.04, peelEnd, 1],
+    isLast
+      ? index === 0
+        ? [0, 0, 1, 1]
+        : [1, 1, 1]
+      : index === 0
+        ? [0, 0, 1, 1, 0, 0]
+        : [1, 1, 0, 0],
+  );
+  const labelOpacity = useTransform(
+    progress,
+    index === 0 ? [0, peelEnd - 0.04, peelEnd, 1] : [0, settleAt - 0.04, settleAt, 1],
+    index === 0 ? [1, 1, 0, 0] : [0, 0, 1, 1],
+  );
+
+  return (
+    <motion.article
+      data-benefit-card={benefit.number}
+      className={`absolute left-1/2 top-[22vh] flex h-[min(58vh,470px)] min-h-[300px] w-full -translate-x-1/2 flex-col justify-between overflow-hidden border border-ink p-6 sm:p-10 lg:p-12 ${benefit.style}`}
+      style={{
+        y,
+        x,
+        scale,
+        opacity,
+        rotate,
+        transformOrigin: "50% 0%",
+        willChange: "transform, opacity",
+        zIndex: total - index,
+      }}
+    >
+      <motion.div style={{ opacity: labelOpacity }}>
+        <p className="eyebrow">{benefit.number} / {benefit.label}</p>
+        <h3 className="display mt-8 max-w-3xl text-4xl font-black leading-[.9] tracking-[-.06em] sm:mt-12 sm:text-6xl lg:text-7xl">
+          {benefit.title}
+        </h3>
+      </motion.div>
+      <motion.p
+        className="max-w-2xl text-base leading-7 sm:text-lg sm:leading-8"
+        style={{ opacity: labelOpacity }}
+      >
+        {benefit.copy}
+      </motion.p>
+      <span className="absolute bottom-5 right-6 font-mono text-5xl font-bold tracking-[-.08em] opacity-20 sm:bottom-8 sm:right-10 sm:text-7xl" aria-hidden="true">
+        {benefit.number}
+      </span>
+    </motion.article>
+  );
+}
+
 function WhatYouGet() {
-  const benefits = [
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: scrollRef,
+    offset: ["start start", "end end"],
+  });
+  const progress = useSpring(scrollYProgress, {
+    stiffness: 95,
+    damping: 28,
+    mass: 0.35,
+    restDelta: 0.0005,
+  });
+  const cardProgress = useTransform(progress, [0, 0.15, 1], [0, 0, 1]);
+  const headingOpacity = useTransform(progress, [0, 0.1, 0.15], [1, 1, 0]);
+  const headingY = useTransform(progress, [0, 0.15], ["0vh", "-8vh"]);
+  const reduced = useReducedMotion();
+  const benefits: WebsiteBenefit[] = [
     {
       number: "01",
+      label: "Make it easy to get in touch",
       title: "Make the next step obvious",
-      copy: "Put a tap-to-call number and quote request where people can find them—especially on a phone.",
-      style: "bg-signal lg:col-span-7",
+      copy: "Make it easy for customers to contact you. Clear tap-to-call buttons and straightforward quote request forms put the next step within reach, especially on mobile.",
+      style: "bg-signal",
     },
     {
       number: "02",
-      title: "Explain what you do",
-      copy: "Set out your services and coverage in plain English, so the right people can tell if you take on their job.",
-      style: "bg-paper lg:col-span-5",
+      label: "Make your services clear",
+      title: "Help the right customers find what they need.",
+      copy: "Show people exactly what you do, the jobs you take on and the areas you cover. Clear information helps potential customers quickly understand whether you're right for their project.",
+      style: "bg-paper",
     },
     {
       number: "03",
-      title: "Show the standard of your work",
-      copy: "Use real project photos and genuine customer reviews to help visitors get a feel for your work.",
-      style: "bg-moss text-paper lg:col-span-5",
+      label: "Show off your work",
+      title: "Let the quality speak for itself.",
+      copy: "Put your best projects front and centre with genuine photographs and customer reviews. Give potential customers a feel for your work and the standard they can expect.",
+      style: "bg-moss text-paper",
     },
     {
       number: "04",
-      title: "Back up the recommendation",
-      copy: "Word of mouth still matters. A professional site gives people somewhere useful to look after they hear your name.",
-      style: "bg-clay lg:col-span-7",
+      label: "Build trust from the first visit",
+      title: "Give your reputation somewhere to go.",
+      copy: "Recommendations get people interested. Your website gives them somewhere professional to explore your services, see your work and learn more about your business.",
+      style: "bg-clay",
     },
   ];
 
   return (
-    <section className="bg-paper py-20 lg:py-28">
-      <div className="container">
-        <div className="grid gap-8 border-t border-ink pt-5 lg:grid-cols-2">
-          <div>
+    <section aria-labelledby="why-website-heading" className="bg-paper">
+      {reduced ? (
+        <div className="container py-20 lg:py-28">
+          <div className="border-t border-ink pt-5">
             <p className="eyebrow">01 / Why a website</p>
-            <h2 className="display mt-6 max-w-xl text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-7xl">
+            <h2
+              id="why-website-heading"
+              className="display mt-6 max-w-xl text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-7xl"
+            >
               GOOD WORK DESERVES A GOOD FIRST IMPRESSION.
             </h2>
           </div>
-          <p className="max-w-lg self-end text-lg leading-7 text-ink/75">
-            A website doesn’t replace Facebook, recommendations or repeat customers. It gives
-            people one professional place to check your services, see your work and decide how to
-            get in touch.
-          </p>
+          <div className="mt-12 grid gap-3 sm:grid-cols-2">
+            {benefits.map((benefit) => (
+              <article
+                key={benefit.number}
+                className={`min-h-64 border border-ink p-6 sm:p-8 ${benefit.style}`}
+              >
+                <p className="eyebrow">{benefit.number} / {benefit.label}</p>
+                <h3 className="display mt-10 max-w-lg text-4xl font-black leading-[.9] tracking-[-.06em] sm:text-5xl">
+                  {benefit.title}
+                </h3>
+                <p className="mt-4 max-w-lg leading-7">{benefit.copy}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-8 border-b border-ink/30 pb-7">
+            <BenefitSectionFooter />
+          </div>
+          <RedesignCallout />
         </div>
-        <div className="mt-12 grid gap-3 lg:grid-cols-12">
-          {benefits.map((benefit) => (
-            <article
-              key={benefit.number}
-              className={`min-h-64 border border-ink p-6 sm:p-8 ${benefit.style}`}
-            >
-              <p className="eyebrow">{benefit.number} / What it does</p>
-              <h3 className="display mt-10 max-w-lg text-4xl font-black leading-[.9] tracking-[-.06em] sm:text-5xl">
-                {benefit.title}
-              </h3>
-              <p className="mt-4 max-w-lg leading-7">{benefit.copy}</p>
-            </article>
-          ))}
-        </div>
-        <div className="mt-8 flex flex-col gap-5 border-b border-ink/30 pb-7 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-xl text-sm leading-6 text-ink/70">
-            Keep the channels that already work for you. Your website gives them a useful place to
-            point potential customers.
-          </p>
-          <a href="#pricing" className="button-secondary self-start sm:self-auto">
-            Compare starting points <ArrowRight className="size-4" />
-          </a>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div ref={scrollRef} className="relative h-[500vh]">
+            <div className="sticky top-20 h-[calc(100vh-5rem)] overflow-hidden">
+              <div className="container relative h-full">
+                <motion.div
+                  className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-paper px-4 text-center"
+                  style={{
+                    opacity: headingOpacity,
+                    y: headingY,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <p className="eyebrow">X01 / Why a website</p>
+                  <h2
+                    id="why-website-heading"
+                    className="display mt-6 max-w-5xl text-5xl font-black leading-[.84] tracking-[-.085em] sm:text-7xl lg:text-8xl"
+                  >
+                    GOOD WORK DESERVES A GOOD FIRST IMPRESSION.
+                  </h2>
+                </motion.div>
+                <div className="absolute inset-x-0 top-0 h-full">
+                  {benefits.map((benefit, index) => (
+                    <BenefitPeelCard
+                      key={benefit.number}
+                      benefit={benefit}
+                      index={index}
+                      total={benefits.length}
+                      progress={cardProgress}
+                    />
+                  ))}
+                </div>
+                <p className="absolute bottom-5 left-0 font-mono text-[10px] uppercase tracking-[.14em] text-ink/65 sm:bottom-7">
+                  Scroll to explore / 04 benefits
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="container py-8">
+            <div className="flex flex-col gap-5 border-b border-ink/30 pb-7 sm:flex-row sm:items-center sm:justify-between">
+              <BenefitSectionFooter />
+            </div>
+            <RedesignCallout />
+          </div>
+        </>
+      )}
     </section>
   );
 }
 
+function BenefitSectionFooter() {
+  return (
+    <>
+      <p className="max-w-xl text-sm leading-6 text-ink/70">
+        Keep the channels that already work for you. Your website gives them a professional
+        place to point potential customers.
+      </p>
+      <a href="#pricing" className="button-secondary self-start sm:self-auto">
+        Explore website packages <ArrowRight className="size-4" />
+      </a>
+    </>
+  );
+}
+
+function RedesignCallout() {
+  return (
+    <aside className="mt-10 border border-ink bg-signal p-6 sm:mt-14 sm:p-10 lg:p-12">
+      <p className="eyebrow">Already have a website?</p>
+      <div className="mt-5 grid gap-6 lg:grid-cols-[1.2fr_.8fr] lg:items-end">
+        <h3 className="display max-w-4xl text-4xl font-black leading-[.86] tracking-[-.075em] sm:text-6xl lg:text-7xl">
+          SITE OR NO SITE. I’M HERE FOR YOU.
+        </h3>
+        <div>
+          <p className="max-w-xl text-base leading-7">
+            Whether you need your first website or a complete redesign of the one you already have,
+            I’ll help you create a site that works harder for your trade.
+          </p>
+          <a href="#contact" className="button-primary mt-5">
+            Let’s talk about your website <ArrowRight className="size-4" />
+          </a>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 function Process() {
+  const stepsRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: stepsRef,
+    offset: ["start start", "end end"],
+  });
+  const progress = useSpring(scrollYProgress, {
+    stiffness: 95,
+    damping: 28,
+    mass: 0.35,
+    restDelta: 0.0005,
+  });
+  const reduced = useReducedMotion();
   const advantages = [
     {
-      title: "I build it for you.",
-      copy: "No spending your evenings trying to put a website together.",
+      title: "I’ll handle the website.",
+      copy: "No spending your evenings learning how to build a website.",
     },
     {
-      title: "No technical experience needed.",
-      copy: "No complicated software or website-building skills required.",
+      title: "No jargon. No complicated setup.",
+      copy: "Clear advice and a simple process from the first conversation onward.",
     },
     {
       title: "Built around your trade.",
-      copy: "Your services, your work, your coverage areas and your customers.",
+      copy: "Your services, your work, your customers and the kind of jobs you want more of.",
     },
   ];
 
-  const steps = [
+  const steps: WebsiteStep[] = [
     {
       number: "01",
-      title: "Tell me about the work",
-      copy: "Share your trade, service area and the customers you want to reach.",
+      title: "Tell me about your business",
+      copy: "We’ll talk about your trade, the work you do, your service areas and what you want your website to achieve.",
     },
     {
       number: "02",
-      title: "Agree the right scope",
-      copy: "We’ll agree the pages and details that fit your business, and what the project costs.",
+      title: "Agree your website",
+      copy: "We’ll choose the right package, agree the pages and features, and confirm the price before any work begins.",
     },
     {
       number: "03",
-      title: "Review the first version",
-      copy: "Check the wording, photos and contact details together, and share any feedback.",
+      title: "Review your website",
+      copy: "I’ll put together your website for you to review. You can check the wording, images and details and provide feedback before launch.",
     },
     {
       number: "04",
-      title: "Get ready to launch",
-      copy: "We’ll sort your feedback and agree the next steps before the site goes live.",
+      title: "Get ready to go live",
+      copy: "Once everything is approved, we’ll complete the final checks and get your website ready to launch.",
     },
   ];
 
   return (
     <section id="how-it-works" className="scroll-target bg-ink py-20 text-paper lg:py-28">
       <div className="container">
-        <div className="grid gap-8 border-t border-paper/50 pt-5 lg:grid-cols-2">
+        <div className="grid gap-8 border-t border-paper/50 pt-5 lg:grid-cols-[1.15fr_.85fr] lg:items-center">
           <div>
             <p className="eyebrow">02 / How it works</p>
             <h2 className="display mt-6 max-w-2xl text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-7xl">
-              YOU KNOW YOUR TRADE. I’LL HANDLE THE WEBSITE.
+              YOU KNOW YOUR TRADE. I’LL TAKE CARE OF THE WEBSITE.
             </h2>
           </div>
-          <div className="max-w-lg self-end space-y-4 text-lg leading-7 text-paper/75">
-            <p>
-              You could spend hours trying to build a website yourself, learning new tools and
-              figuring out what goes where. Or you can leave the website development to me.
-            </p>
-            <p>
-              I build websites around your business, the services you offer and the customers you
-              want to reach. You provide the trade knowledge, photos and feedback. I’ll handle the
-              design, development and technical side.
-            </p>
-          </div>
+          <ScrollTextReveal delay={0.12}>
+            <div className="border-l-4 border-signal py-2 pl-6 sm:pl-8">
+              <p className="display text-[clamp(5rem,12vw,9rem)] font-black leading-[.78] tracking-[-.1em] text-signal">
+                40+
+              </p>
+              <p className="mt-4 max-w-xs font-mono text-sm font-bold uppercase leading-6 tracking-[.12em] text-paper">
+                Sites built solo this year
+              </p>
+            </div>
+          </ScrollTextReveal>
         </div>
         <div className="mt-8 grid gap-px border border-paper/30 bg-paper/30 sm:grid-cols-3">
           {advantages.map((advantage) => (
@@ -624,19 +950,46 @@ function Process() {
             </article>
           ))}
         </div>
-        <ol className="mt-12 grid gap-px border border-paper/30 bg-paper/30 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((step) => (
-            <li key={step.number} className="min-h-64 bg-ink p-6 sm:p-7">
-              <span className="font-mono text-xs text-signal">{step.number}</span>
-              <h3 className="display mt-10 text-3xl font-black leading-[.92] tracking-[-.055em]">
-                {step.title}
-              </h3>
-              <p className="mt-4 text-sm leading-6 text-paper/70">{step.copy}</p>
-            </li>
-          ))}
-        </ol>
+        {reduced ? (
+          <ol className="mt-12 grid gap-px border border-paper/30 bg-paper/30 sm:grid-cols-2 lg:grid-cols-4">
+            {steps.map((step) => (
+              <li key={step.number} className="min-h-64 bg-ink p-6 sm:p-7">
+                <span className="font-mono text-xs text-signal">{step.number}</span>
+                <h3 className="display mt-10 text-3xl font-black leading-[.92] tracking-[-.055em]">
+                  {step.title}
+                </h3>
+                <p className="mt-4 text-sm leading-6 text-paper/70">{step.copy}</p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div
+            ref={stepsRef}
+            className="relative mt-12 h-[420vh] sm:h-[440vh]"
+            aria-label="Four steps from first conversation to launch"
+          >
+            <div className="sticky top-20 h-[calc(100vh-5rem)] overflow-hidden">
+              <div className="container relative h-full">
+                <ol className="absolute inset-0 m-0 list-none p-0">
+                  {steps.map((step, index) => (
+                    <ProcessPeelCard
+                      key={step.number}
+                      step={step}
+                      index={index}
+                      total={steps.length}
+                      progress={progress}
+                    />
+                  ))}
+                </ol>
+                <p className="absolute bottom-5 left-0 font-mono text-[10px] uppercase tracking-[.14em] text-paper/65 sm:bottom-7">
+                  Scroll to follow the process / 04 steps
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <a href="#contact" className="button-primary mt-8">
-          Talk through your project <ArrowRight className="size-4" />
+          Talk through your website <ArrowRight className="size-4" />
         </a>
       </div>
     </section>
@@ -647,13 +1000,13 @@ function Pricing() {
   const addOns = [
     {
       name: "Facebook and Instagram setup",
-      price: "£40",
+      price: "£35",
       description:
         "Set up a Facebook business page and an Instagram professional account for your trade.",
     },
     {
       name: "Google Business Profile setup",
-      price: "£40",
+      price: "£35",
       description:
         "Help customers find your business on Google Search and Google Maps with a properly set-up profile.",
     },
@@ -665,7 +1018,7 @@ function Pricing() {
     },
     {
       name: "QR-code Google review materials",
-      price: "£15",
+      price: "£10",
       description:
         "Get a QR code and review-request design customers can scan to reach your Google review link. Printing costs extra.",
     },
@@ -673,32 +1026,33 @@ function Pricing() {
       name: "Business card design",
       price: "£30",
       description:
-        "A business card design with your contact details, ready to send to a printer. Printing costs extra.",
+        "Business card design featuring your Google review QR code, including a print-ready design file. Physical printing is an additional cost.",
     },
   ];
 
   const packages = [
     {
       name: "Online Presence Package",
-      price: "£70",
-      regularPrice: "£80",
+      price: "£60",
+      regularPrice: "£70",
       saving: "£10",
       details: [
         "Facebook business page setup",
         "Instagram professional account setup",
         "Google Business Profile setup",
+        "TikTok business account setup (if required)",
       ],
     },
     {
       name: "Business Visibility Package",
-      price: "£169",
-      regularPrice: "£195",
-      saving: "£26",
+      price: "£159",
+      regularPrice: "£180",
+      saving: "£21",
       details: [
         "Everything in Online Presence",
         "Meta Ads account and initial campaign setup",
         "QR-code Google review materials",
-        "Business card design",
+        "Business card design featuring the Google review QR code, with a print-ready design file",
       ],
     },
   ];
@@ -706,15 +1060,15 @@ function Pricing() {
   const bundles = [
     {
       name: "Starter Website + Online Presence",
-      price: "£325",
-      regularPrice: "£340",
+      price: "£345",
+      regularPrice: "£360",
       saving: "£15",
       includes: "Starter Website and Online Presence Package",
     },
     {
       name: "Complete Website + Business Visibility",
-      price: "£539",
-      regularPrice: "£569",
+      price: "£629",
+      regularPrice: "£659",
       saving: "£30",
       includes: "Complete Website and Business Visibility Package",
     },
@@ -727,13 +1081,13 @@ function Pricing() {
           <div>
             <p className="eyebrow">03 / Pricing & scope</p>
             <h2 className="display mt-6 max-w-2xl text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-7xl">
-              WEBSITES AND SERVICES. CLEAR PRICES UP FRONT.
+              A PROFESSIONAL WEBSITE. A CLEAR PRICE.
             </h2>
           </div>
           <div className="self-end">
             <p className="text-lg leading-7 text-ink/75">
-              Choose a website package, add useful digital services, or combine them in a bundle.
-              We’ll agree the scope and price before any work begins.
+              No confusing estimates or unexpected surprises. Choose the website size that suits
+              your business. If you need something bigger, I’ll put together a tailored quote.
             </p>
           </div>
         </div>
@@ -757,19 +1111,19 @@ function Pricing() {
               <h4 className="display mt-5 text-3xl font-black leading-[.92] tracking-[-.055em]">
                 Starter Website
               </h4>
-              <p className="mt-4 font-mono text-3xl font-bold tracking-tight">£270</p>
+              <p className="mt-4 font-mono text-3xl font-bold tracking-tight">£300</p>
               <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-ink/60">
                 One-off
               </p>
               <p className="mt-4 text-sm leading-6 text-ink/75">
-                One page containing the essential information customers need to understand your
-                business and contact you.
+                A professional one-page website covering the essentials, giving customers a clear
+                introduction to your business and an easy way to contact you.
               </p>
               <ul className="mt-6 grid gap-3 border-t border-ink/25 pt-5 text-sm leading-6">
                 {[
                   "Business introduction and services",
                   "Areas you cover",
-                  "Work gallery",
+                  "Basic work gallery",
                   "Contact details and enquiry options",
                   "Mobile-friendly design",
                   "Basic SEO setup",
@@ -786,18 +1140,18 @@ function Pricing() {
               >
                 <span className="eyebrow">Add Online Presence</span>
                 <span className="mt-2 block text-sm leading-5">
-                  Get the Online Presence Package for £55 instead of £70 when purchased with this
+                  Get the Online Presence Package for £45 instead of £60 when purchased with this
                   website.
                 </span>
                 <span className="mt-3 block font-mono text-xs font-bold uppercase tracking-wide">
-                  Combined price: £325. Save £15.
+                  Combined price: £345. Save £15.
                 </span>
               </a>
               <a
                 href="#contact"
                 className="mt-auto inline-flex items-center gap-2 pt-8 font-mono text-xs font-bold uppercase tracking-wider underline decoration-1 underline-offset-4"
               >
-                Ask about Starter <ArrowRight className="size-4" aria-hidden="true" />
+                Get a Starter quote <ArrowRight className="size-4" aria-hidden="true" />
               </a>
             </article>
             <article className="grid gap-6 border border-ink bg-signal p-6 sm:p-8 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
@@ -811,23 +1165,24 @@ function Pricing() {
                 <h4 className="display mt-5 text-3xl font-black leading-[.92] tracking-[-.055em]">
                   Complete Website
                 </h4>
-                <p className="mt-4 font-mono text-3xl font-bold tracking-tight">£400</p>
+                <p className="mt-4 font-mono text-3xl font-bold tracking-tight">£500</p>
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-ink/60">
                   One-off
                 </p>
                 <p className="mt-4 text-sm leading-6 text-ink/75">
-                  A more developed website with separate pages for your services, business and
-                  previous work. Give customers more detail, make navigation easier and create more
-                  opportunities for relevant search content.
+                  A website of up to five pages, giving your services, business information and previous work the space they deserve.
                 </p>
                 <ul className="mt-6 grid gap-3 border-t border-ink/25 pt-5 text-sm leading-6">
                   {[
-                    "Everything in Starter",
-                    "Separate service pages with more detailed information",
-                    "Dedicated gallery or previous work page",
-                    "About page",
+                    "Everything needed for a professional website",
+                    "Up to five pages",
+                    "Dedicated pages for your services",
+                    "Dedicated page gallery displaying all your work",
+                    "About your business and how you work",
                     "Dedicated contact and enquiry page",
-                    "More opportunities to target relevant services and locations through Google",
+                    "More room for project photos and details",
+                    "Mobile-friendly design",
+                    "Basic SEO setup",
                   ].map((detail) => (
                     <li key={detail} className="flex gap-3">
                       <Check className="mt-1 size-4 shrink-0" aria-hidden="true" />
@@ -841,18 +1196,18 @@ function Pricing() {
                 >
                   <span className="eyebrow">Add Business Visibility</span>
                   <span className="mt-2 block text-sm leading-5">
-                    Get the Business Visibility Package for £139 instead of £169 when purchased
+                    Get the Business Visibility Package for £129 instead of £159 when purchased
                     with this website.
                   </span>
                   <span className="mt-3 block font-mono text-xs font-bold uppercase tracking-wide">
-                    Combined price: £539. Save £30.
+                    Combined price: £629. Save £30.
                   </span>
                 </a>
                 <a
                   href="#contact"
                   className="mt-8 inline-flex items-center gap-2 pt-2 font-mono text-xs font-bold uppercase tracking-wider underline decoration-1 underline-offset-4"
                 >
-                  Ask about Complete <ArrowRight className="size-4" aria-hidden="true" />
+                  Get a Complete quote <ArrowRight className="size-4" aria-hidden="true" />
                 </a>
               </div>
               <div className="relative mx-auto aspect-square w-full max-w-[280px] lg:max-w-none" aria-hidden="true">
@@ -874,6 +1229,22 @@ function Pricing() {
               </div>
             </article>
           </div>
+        </div>
+
+        <div className="mt-16">
+          <div className="mb-5 border-b border-ink pb-3">
+            <p className="eyebrow">02 / Need more than five pages?</p>
+            <h3 className="display mt-2 text-3xl font-black leading-none tracking-[-.05em] sm:text-4xl">
+              No problem.
+            </h3>
+          </div>
+          <p className="max-w-2xl text-lg leading-7 text-ink/75">
+            Tell me what you need and I’ll put together a price based on the size and requirements
+            of your project.
+          </p>
+          <a href="#contact" className="button-primary mt-6">
+            Request a tailored quote <ArrowRight className="size-4" />
+          </a>
         </div>
 
         <div id="package-deals" className="mt-16 scroll-target">
@@ -924,12 +1295,16 @@ function Pricing() {
 
         <div className="mt-16">
           <div className="mb-5 border-b border-ink pb-3">
-            <p className="eyebrow">02 / Individual add-ons</p>
+            <p className="eyebrow">02 / Optional digital services</p>
             <h3 className="display mt-2 text-3xl font-black leading-none tracking-[-.05em] sm:text-4xl">
-              Add what’s useful.
+              Build more of your online presence.
             </h3>
           </div>
-          <div className="grid gap-px border border-ink bg-ink sm:grid-cols-2 lg:grid-cols-3">
+          <p className="max-w-2xl text-lg leading-7 text-ink/75">
+            Already have a website, or want a little more help getting your business online? Add the
+            services that make sense for you.
+          </p>
+          <div className="mt-6 grid gap-px border border-ink bg-ink sm:grid-cols-2 lg:grid-cols-3">
             {addOns.map((service) => (
               <article key={service.name} className="flex flex-col bg-paper p-5 sm:p-6">
                 <div className="flex items-start justify-between gap-4">
@@ -971,18 +1346,25 @@ function Pricing() {
             <h3 className="display mt-4 text-3xl font-black leading-[.95] tracking-[-.05em]">
               Website Care &amp; Support
             </h3>
-            <p className="mt-4 font-mono text-3xl font-bold">£29/month</p>
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-wider">Recurring</p>
+            <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono">
+              <span className="text-xl text-ink/60 line-through">£29/month</span>
+              <span className="text-4xl font-black uppercase tracking-tight">Free</span>
+            </p>
+            <p className="mt-2 max-w-xs font-mono text-xs font-bold uppercase leading-5 tracking-wider">
+              First 2 months free, then £29.99/month. 12 monthly payments minimum after the free
+              period.
+            </p>
           </div>
           <div className="border border-ink bg-paper p-6 sm:p-8">
             <p className="eyebrow">A hand when you need it</p>
             <ul className="mt-4 grid gap-3 text-sm leading-6 sm:grid-cols-2">
               {[
-                "Basic website maintenance and checks",
-                "Contact form checks",
-                "Up to 30 minutes of small text and photo updates each month",
-                "Domain and website technical assistance",
-                "General website support",
+                "Regular website maintenance and technical checks",
+                "Contact form checks to help make sure customer enquiries can reach you",
+                "Up to 30 minutes of small text and photo updates every month",
+                "Help with website and domain-related technical issues",
+                "Basic website support when you need advice or a change",
+                "Basic on-page SEO and Google visibility checks",
               ].map((detail) => (
                 <li key={detail} className="flex gap-3">
                   <Check className="mt-1 size-4 shrink-0" aria-hidden="true" />
@@ -1042,27 +1424,62 @@ function Pricing() {
 function FAQ() {
   const additionalFaqs = [
     {
-      question: "Websites sound expensive. What does the price cover?",
+      question: "What does Facebook and Instagram setup include?",
       answer:
-        "A one-page Starter Website is £270, and a 3–5 page Complete Website is £400. I’ll explain what’s included and any additional costs before work begins, so you can decide without pressure.",
+        "I’ll set up your Facebook business page and Instagram professional account, add your logo and business details, link them to your website and connect the profiles where appropriate. I’ll also publish the first batch of images you provide, so the profiles are ready to show customers what you do.",
     },
     {
-      question: "I don’t have time to manage a website.",
+      question: "What does Google Business Profile setup do?",
       answer:
-        "The site is built around the information customers need, not another stream of posts. We’ll agree what should be on it before launch. If you want help with changes afterwards, we can discuss a support arrangement.",
+        "I’ll set up or help complete your Google Business Profile with accurate business details, services, service area, contact information, website link, logo and photos you provide. Google may ask you to verify the business. Setup helps customers find and understand your business on Google Search and Maps, but it can’t guarantee a particular ranking or number of enquiries.",
     },
     {
-      question: "I don’t know anything about websites. Is that a problem?",
+      question: "What are Meta Ads?",
       answer:
-        "Not at all. You know your trade and your customers; I’ll explain the choices in plain English and handle the build. You can review the content and ask questions before anything goes live.",
+        "Meta Ads are paid adverts on Facebook and Instagram. I can set up an initial campaign with a daily, weekly or monthly budget you choose, designed to show your advert to relevant potential customers in your target area. The advertising spend is paid separately, and results such as enquiries or new work aren’t guaranteed.",
     },
     {
-      question: "What does basic SEO setup mean?",
+      question: "I get most of my work through recommendations. Why do I need a website?",
       answer:
-        "Basic SEO setup helps search engines understand what your website and services are about. This includes descriptive page titles and descriptions, clear page headings, relevant service and location information, a sitemap and essential indexing setup. It provides a technical SEO foundation but does not guarantee Google rankings or specific search positions.",
+        "Recommendations are valuable. But people often look a business up before deciding to get in touch. A professional website gives them somewhere to see your work, understand your services and feel confident taking the next step.",
+    },
+    {
+      question: "I already have Facebook. Isn't that enough?",
+      answer:
+        "Facebook is useful for updates, photos and staying connected with customers. Your website gives your business a professional home of its own, where your services, work and contact details are easy to find.",
+    },
+    {
+      question: "Will my website get me to the top of Google?",
+      answer:
+        "No one can honestly guarantee that. Your website will have a sound technical SEO foundation and clear information about your business and services. Search visibility also depends on competition, your Google Business Profile and other factors.",
+    },
+    {
+      question: "How much does a website cost?",
+      answer:
+        "A one-page Starter Website is £300. A Complete Website of up to five pages is £500. Larger websites are priced according to their requirements. You'll know the agreed price before work begins.",
+    },
+    {
+      question: "Do I need to know anything about websites?",
+      answer:
+        "Not at all. You know your trade and your customers. I'll explain the choices in plain English and handle the design and development.",
+    },
+    {
+      question: "What do I need to provide?",
+      answer:
+        "You'll need to provide accurate information about your business, services and coverage, along with any photographs you have permission to use. I'll help organise everything and you'll have the opportunity to review the website before it goes live.",
+    },
+    {
+      question: "Do I own my website?",
+      answer:
+        "Your website is built for your business, with a clear handover and no hidden lock-in. The ownership and access arrangements will be explained before the project starts.",
+    },
+    {
+      question: "Can I get help after the website launches?",
+      answer:
+        "Yes. You can arrange ongoing Website Care & Support, or have a straightforward handover if you prefer to manage updates yourself.",
     },
   ];
-  const faqs = [...siteConfig.faqs, ...additionalFaqs];
+  const faqs = additionalFaqs;
 
   return (
     <section id="faq" className="scroll-target bg-paper py-20 lg:py-28">
@@ -1070,17 +1487,13 @@ function FAQ() {
         <div>
           <p className="eyebrow border-t border-ink pt-5">04 / Straight answers</p>
           <h2 className="display mt-6 text-5xl font-black leading-[.88] tracking-[-.075em] sm:text-6xl">
-            THE QUESTIONS YOU’RE PROBABLY THINKING.
+            GOOD QUESTIONS. STRAIGHT ANSWERS.
           </h2>
-          <p className="mt-5 max-w-sm leading-7 text-ink/70">
-            No pressure and no promise of overnight results. Just clear answers about what a site
-            can—and can’t—do for your business.
-          </p>
         </div>
         <div>
           {faqs.map((faq, index) => (
             <details key={faq.question} className="group border-t border-ink py-5">
-            <summary className="flex cursor-pointer list-none justify-between gap-6 rounded-sm text-base font-bold leading-6 sm:text-lg">
+              <summary className="flex cursor-pointer list-none justify-between gap-6 rounded-sm text-base font-bold leading-6 sm:text-lg">
                 <span>
                   <span className="mr-3 font-mono text-xs text-[#a03416]">
                     {String(index + 1).padStart(2, "0")}
@@ -1126,11 +1539,21 @@ function About() {
               <p className="display mt-8 text-3xl font-bold leading-[.95] tracking-[-.04em]">
                 Clear advice.
                 <br />
-                No web jargon.
+                Professional work.
               </p>
             </div>
           </div>
-          <p className="mt-7 max-w-xl text-lg leading-7">{siteConfig.about.copy}</p>
+          <p className="mt-7 max-w-xl text-lg leading-7">
+            I come from a family of tradespeople, so I understand the demands of working in the
+            trade and how valuable your time is. The last thing you need is complicated web jargon
+            or hours spent trying to build and manage a website yourself.
+          </p>
+          <p className="mt-4 max-w-xl text-lg leading-7">
+            That&apos;s why I keep things straightforward. I&apos;ll listen to what your business
+            needs, give you clear advice and build a professional website around the work you
+            actually do – helping customers understand your services, see the quality of your work
+            and get in touch.
+          </p>
         </div>
       </div>
     </section>
@@ -1229,11 +1652,23 @@ export function Contact() {
         <div>
           <p className="eyebrow border-t border-ink/50 pt-5">06 / Start a conversation</p>
           <h2 className="display mt-6 text-5xl font-black leading-[.86] tracking-[-.08em] sm:text-7xl">
-            LET’S MAKE IT EASIER TO CHOOSE YOU.
+            LET&apos;S GET YOUR BUSINESS ONLINE.
           </h2>
           <p className="mt-6 max-w-md text-lg leading-7">
-            Tell me a little about your trade and what you need. I’ll come back with a clear
-            recommendation and a quote—no pressure to go ahead.
+            Getting a website built with me is straightforward. Simply tell me:
+          </p>
+          <ul className="mt-4 max-w-md list-disc space-y-2 pl-5 text-lg leading-7">
+            <li>What trade or industry you&apos;re in.</li>
+            <li>What services you offer and the work you do.</li>
+            <li>
+              What you&apos;d like your website to achieve – whether that&apos;s getting more
+              enquiries, showcasing your work, helping customers find you or making it easier for
+              people to get in touch.
+            </li>
+          </ul>
+          <p className="mt-4 max-w-md text-lg leading-7">
+            I&apos;ll look at what your business needs and come back with a clear recommendation and
+            price. There&apos;s no pressure to go ahead.
           </p>
           <div className="mt-8 space-y-3 font-mono text-sm font-bold">
             {hasConfiguredPhone && (
@@ -1265,7 +1700,7 @@ export function Contact() {
           </div>
         </div>
         <form className="border border-ink bg-paper p-5 sm:p-8" onSubmit={submit}>
-          <p className="eyebrow mb-6">A few details to get started</p>
+          <p className="eyebrow mb-6">A few details are all I need to get started.</p>
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="eyebrow grid gap-2">
               <span className="flex min-h-[2.4em] flex-col justify-between">
@@ -1359,7 +1794,7 @@ export function Contact() {
             disabled={formState.phase === "submitting"}
             aria-busy={formState.phase === "submitting"}
           >
-            {formState.phase === "submitting" ? "Sending…" : "Send my enquiry"}
+            {formState.phase === "submitting" ? "Sending…" : "Get my website quote"}
             {formState.phase === "submitting" ? (
               <span
                 className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
@@ -1430,12 +1865,17 @@ export function HomePage() {
         <section id="work" className="scroll-target">
           <div className="container py-8 sm:py-10">
             <ScrollTextReveal>
-              <p className="eyebrow">Selected work / One live project, two concepts</p>
+              <p className="eyebrow">Selected work / Three live projects</p>
             </ScrollTextReveal>
             <ScrollTextReveal delay={0.12}>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/70">
-                The plastering site is a live client project. The electrical and roofing examples
-                are concepts—not client results or live businesses.
+                Every business is different. Your website should reflect the work you do and the
+                customers you want to reach.
+              </p>
+            </ScrollTextReveal>
+            <ScrollTextReveal delay={0.15}>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/70">
+                Three live websites built for tradespeople and local businesses.
               </p>
             </ScrollTextReveal>
           </div>

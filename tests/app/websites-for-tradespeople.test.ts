@@ -15,7 +15,7 @@ describe("websites for tradespeople page", () => {
     expect(markup).toContain("Website design for tradespeople");
     expect(markup).toContain("Do tradespeople really need a website if they already use Facebook?");
     expect(markup).toContain("Will my website automatically appear at the top of Google?");
-    expect(markup).toContain("The Starter Website is £270 and the Complete Website is £400.");
+    expect(markup).toContain("The Starter Website is £300 and the Complete Website is £500.");
     expect(markup).toContain('href="/#contact"');
     expect(markup).toContain('href="/#pricing"');
     expect(markup).toContain('href="/#work"');

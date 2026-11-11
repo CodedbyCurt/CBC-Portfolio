@@ -115,7 +115,7 @@ const faqs = [
   {
     question: "How much does a tradesperson’s website cost?",
     answer:
-      "The Starter Website is £270 and the Complete Website is £400. The one-page Starter covers essential business information; the 3–5 page Complete gives more room for separate services, work and business details. See the pricing section for the current full inclusions.",
+      "The Starter Website is £300 and the Complete Website is £500. The one-page Starter covers essential business information; the 3–5 page Complete gives more room for separate services, work and business details. See the pricing section for the current full inclusions.",
   },
 ];
 
